@@ -1,0 +1,1034 @@
+<!-- Neotec Insight v2 — financial analysis cockpit + Neotec AI (powered by NeoNexus, local/private)
+     Single-file interactive prototype. Matches the live app's design tokens.
+     The AI panel mirrors the real integration: report context → NeoNexus
+     OpenAI-compatible /chat/completions → analysis. Here the analysis engine
+     runs locally on the on-screen numbers so it works offline and feels real. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f7f5;--surface:#fff;--surface-2:#f1efe8;--surface-3:#ebe7dd;
+  --border:rgba(0,0,0,.10);--border-strong:rgba(0,0,0,.18);
+  --text:#1a1a17;--text-muted:#5f5e5a;--text-faint:#908e87;
+  --info:#185fa5;--info-bg:#e6f1fb;--info-border:#b5d4f4;--info-text:#042c53;
+  --pos:#0f6e56;--pos-bg:rgba(15,110,86,.07);--neg:#a32d2d;--neg-bg:rgba(163,45,45,.07);
+  --warn:#854f0b;--warn-bg:rgba(133,79,11,.07);
+  --budget-bg:rgba(186,117,23,.05);--prior-bg:rgba(15,110,86,.04);
+  --ai:#6b3fa0;--ai-bg:#f3edfb;--ai-border:#d9c6f0;
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --serif:'Newsreader',Georgia,serif;
+  --r-sm:4px;--r-md:6px;--r-lg:8px;--r-xl:12px;
+  --el:0 4px 16px rgba(0,0,0,.09),0 1px 3px rgba(0,0,0,.05);
+  --el-modal:0 12px 40px rgba(0,0,0,.16),0 3px 8px rgba(0,0,0,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"tnum","cv11";padding:18px;}
+.num{font-variant-numeric:tabular-nums;}
+body.rtl{direction:rtl;}
+body.rtl .topnav{margin-left:0;margin-right:auto;}
+/* RTL: numbers stay LTR; first column sticks to the right; accents flip */
+.num{font-variant-numeric:tabular-nums;}
+body.rtl .num{direction:ltr;unicode-bidi:plaintext;text-align:right;}
+body.rtl .tscroll table{direction:rtl;}
+body.rtl thead th{text-align:right;}
+body.rtl th.rowhead,body.rtl td.rowlabel{text-align:right;left:auto;right:0;border-right:0;border-left:.5px solid var(--border);}
+body.rtl thead th.rowhead{border-left:.5px solid var(--border);}
+body.rtl .kpi::before{left:auto;right:0;}
+body.rtl .kpi .ai{right:auto;left:10px;}
+body.rtl .var-row{grid-template-columns:78px 1fr 130px;}
+.rl2{left:160px;}
+body.rtl .rl2{left:auto;right:160px;}
+body.rtl .viewbar .spacer{} 
+
+/* header */
+.hdr{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.logo{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#1a3a5c,#185fa5);
+  color:#fff;display:grid;place-items:center;font-weight:700;font-size:17px;box-shadow:0 2px 8px rgba(24,95,165,.25);}
+.brand small{display:block;font-size:9px;letter-spacing:.22em;color:var(--text-faint);text-transform:uppercase;font-weight:600;}
+.brand h1{font-family:var(--serif);font-size:22px;font-weight:600;line-height:1;letter-spacing:-.01em;}
+.brand .ver{font-size:10px;color:var(--text-faint);font-weight:500;vertical-align:super;margin-left:4px;}
+.topnav{margin-left:auto;display:flex;gap:4px;background:var(--surface-2);padding:3px;border-radius:9px;border:.5px solid var(--border);}
+.navph{max-width:520px;margin:64px auto;text-align:center;padding:0 24px;}
+.navph .ic{font-size:34px;opacity:.5;}
+.navph h2{font-family:var(--serif),serif;font-weight:500;font-size:22px;margin:14px 0 6px;color:var(--text);}
+.navph p{color:var(--text-muted);font-size:13px;line-height:1.6;margin:0 auto 18px;}
+.navph button{border:.5px solid var(--border-strong);background:var(--surface);font:inherit;font-size:13px;font-weight:600;color:var(--text);padding:9px 18px;border-radius:var(--r-md);cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
+.navph button:hover{border-color:var(--text-muted);}
+.topnav button{border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:var(--text-muted);padding:6px 13px;border-radius:7px;cursor:pointer;transition:.15s;}
+.topnav button:hover{color:var(--text);} .topnav button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.07);}
+.langtog{height:30px;padding:0 11px;border:.5px solid var(--border);background:var(--surface);border-radius:8px;font:inherit;
+  font-size:12px;font-weight:600;cursor:pointer;color:var(--text-muted);}
+
+/* strip */
+.strip{background:var(--surface-2);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:14px;}
+.flbl{display:block;font-size:10px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;}
+select,input[type=text],input[type=date]{width:100%;height:32px;border:.5px solid var(--border-strong);background:var(--surface);border-radius:var(--r-md);
+  padding:0 10px;font:inherit;font-size:12.5px;color:var(--text);cursor:pointer;transition:.12s;}
+select:hover,input[type=date]:hover{border-color:var(--text-muted);} select:focus,input:focus{outline:0;border-color:var(--info);box-shadow:0 0 0 2px rgba(24,95,165,.14);}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:9px 12px;align-items:end;}
+
+/* view by */
+.viewbar{display:flex;align-items:center;gap:14px;margin-top:14px;padding-top:13px;border-top:.5px solid var(--border);flex-wrap:wrap;}
+.viewbar .vlbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;color:var(--text-faint);}
+.seg{position:relative;display:inline-flex;background:var(--surface);border:.5px solid var(--border);border-radius:9px;padding:3px;gap:2px;}
+.seg button{position:relative;z-index:1;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--text-muted);
+  padding:6px 16px;border-radius:7px;cursor:pointer;transition:color .2s;display:flex;align-items:center;gap:6px;}
+.seg button .ic{font-size:13px;opacity:.7;} .seg button.on{color:var(--text);}
+.seg .glide{position:absolute;top:3px;bottom:3px;background:var(--surface-2);border:.5px solid var(--border);border-radius:7px;
+  box-shadow:0 1px 2px rgba(0,0,0,.05);transition:left .26s cubic-bezier(.4,0,.15,1),width .26s cubic-bezier(.4,0,.15,1);}
+.viewbar .spacer{flex:1;}
+.subbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:12px;padding:11px 14px;background:var(--surface);
+  border:.5px solid var(--border);border-radius:var(--r-md);animation:fade .28s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.subbar .mini{display:flex;align-items:center;gap:8px;} .subbar .mini .flbl{margin:0;} .subbar select{height:28px;width:auto;min-width:130px;}
+.chk{font-size:12px;color:var(--text-muted);display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+.chk input{accent-color:var(--info);width:14px;height:14px;}
+
+/* buttons */
+.colbtn{height:28px;display:inline-flex;align-items:center;gap:8px;padding:0 12px;background:var(--surface);
+  border:.5px solid var(--border-strong);border-radius:var(--r-md);font:inherit;font-size:12px;font-weight:500;color:var(--text);cursor:pointer;transition:.14s;}
+.colbtn:hover{border-color:var(--info);color:var(--info);}
+.colbtn .pill{background:var(--info-bg);color:var(--info-text);font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:10px;border:.5px solid var(--info-border);}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:13px;}
+.actions button{height:34px;padding:0 14px;border:.5px solid var(--border-strong);background:var(--surface);border-radius:var(--r-md);font:inherit;
+  font-size:12.5px;font-weight:500;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.14s;}
+.actions button:hover{border-color:var(--info);color:var(--info);}
+.actions button.primary{background:var(--info);border-color:var(--info);color:#fff;} .actions button.primary:hover{background:#13518f;color:#fff;}
+.actions button.ai{background:var(--ai-bg);border-color:var(--ai-border);color:var(--ai);}
+.actions button.ai:hover{background:#ebe0f8;color:var(--ai);}
+.actions .meta{margin-left:auto;font-size:10.5px;color:var(--text-faint);letter-spacing:.02em;}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+.kpi{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;position:relative;overflow:hidden;}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--info);opacity:.5;}
+.kpi.g::before{background:var(--pos);} .kpi.w::before{background:var(--warn);} .kpi.r::before{background:var(--neg);}
+.kpi .top{display:flex;align-items:center;justify-content:space-between;}
+.kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);font-weight:600;}
+.kpi .spark{height:22px;}
+.kpi .v{font-size:24px;font-weight:600;letter-spacing:-.02em;margin:5px 0 5px;font-variant-numeric:tabular-nums;}
+.kpi .d{font-size:11.5px;color:var(--text-muted);} .kpi .d .up{color:var(--pos);font-weight:600;} .kpi .d .dn{color:var(--neg);font-weight:600;}
+.kpi .ai{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:6px;border:.5px solid var(--ai-border);
+  background:var(--ai-bg);color:var(--ai);font-size:12px;display:grid;place-items:center;cursor:pointer;opacity:0;transition:.15s;}
+.kpi:hover .ai{opacity:1;}
+
+/* analysis cockpit */
+.cockpit{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;margin-bottom:14px;}
+.panel{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;}
+.panel h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);font-weight:600;margin-bottom:12px;
+  display:flex;align-items:center;justify-content:space-between;}
+.panel h3 .hint{font-weight:500;text-transform:none;letter-spacing:0;color:var(--text-faint);font-size:10.5px;}
+.ratios{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.ratio{background:var(--surface-2);border-radius:var(--r-md);padding:10px 12px;}
+.ratio .rl{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+.ratio .rv{font-size:19px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums;}
+.ratio .rb{font-size:10.5px;margin-top:2px;} .ratio .rb.up{color:var(--pos);} .ratio .rb.dn{color:var(--neg);} .ratio .rb.fl{color:var(--text-faint);}
+/* diverging variance bars */
+.var-row{display:grid;grid-template-columns:130px 1fr 78px;align-items:center;gap:10px;margin-bottom:7px;font-size:12px;}
+.var-row .vl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);}
+.var-track{position:relative;height:18px;background:var(--surface-2);border-radius:4px;}
+.var-track .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--border-strong);}
+.var-bar{position:absolute;top:3px;bottom:3px;border-radius:3px;}
+.var-bar.pos{background:var(--pos);left:50%;} .var-bar.neg{background:var(--neg);right:50%;}
+.var-amt{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;font-size:11.5px;}
+.var-amt.pos{color:var(--pos);} .var-amt.neg{color:var(--neg);}
+
+/* tables */
+.tcard{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);overflow:hidden;}
+.tscroll{overflow-x:auto;}
+table{border-collapse:separate;border-spacing:0;width:100%;font-variant-numeric:tabular-nums;}
+th,td{padding:8px 14px;font-size:12.5px;white-space:nowrap;}
+thead th{position:sticky;top:0;background:var(--surface-2);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);
+  font-weight:600;text-align:right;border-bottom:.5px solid var(--border);cursor:pointer;user-select:none;}
+thead th:first-child{text-align:left;}
+th.rowhead,td.rowlabel{position:sticky;left:0;background:var(--surface);text-align:left;z-index:2;border-right:.5px solid var(--border);}
+thead th.rowhead{background:var(--surface-2);z-index:3;}
+td{text-align:right;color:var(--text);border-bottom:.5px solid rgba(0,0,0,.05);}
+tr:hover td{background:var(--surface-2);} tr:hover td.rowlabel{background:var(--surface-2);}
+.coltotal{background:var(--info-bg)!important;font-weight:600;color:var(--info-text);} thead th.coltotal{background:#dbeafd!important;}
+.sect td{background:#23211d!important;color:#f1efe8;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;}
+.sub td{font-weight:600;background:var(--surface-2);} .sub td.rowlabel{background:var(--surface-2);}
+.neg{color:var(--neg);} .zero{color:var(--text-faint);}
+td.heat{border-radius:2px;}
+
+/* popover + modal + toast */
+.popover{position:absolute;z-index:50;width:340px;background:var(--surface);border:.5px solid var(--border-strong);border-radius:var(--r-xl);box-shadow:var(--el);overflow:hidden;animation:pop .18s ease;}
+@keyframes pop{from{opacity:0;transform:scale(.97) translateY(-4px)}to{opacity:1;transform:none}}
+.pop-head{padding:12px 14px 10px;border-bottom:.5px solid var(--border);}
+.pop-head .t{font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;}
+.pop-head .t .x{cursor:pointer;color:var(--text-faint);font-size:16px;}
+.pop-search{margin-top:9px;position:relative;} .pop-search input{height:30px;padding-left:30px;font-size:12px;}
+.pop-search .si{position:absolute;left:10px;top:7px;color:var(--text-faint);font-size:13px;}
+.pop-quick{display:flex;gap:6px;padding:9px 14px;border-bottom:.5px solid var(--border);align-items:center;}
+.pop-quick button{font:inherit;font-size:11px;font-weight:500;padding:4px 9px;border-radius:6px;border:.5px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;}
+.pop-quick button:hover{border-color:var(--info);color:var(--info);} .pop-quick .cnt{margin-left:auto;font-size:10.5px;color:var(--text-faint);}
+.pop-list{max-height:280px;overflow-y:auto;padding:4px;}
+.pop-list::-webkit-scrollbar{width:9px;} .pop-list::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:9px;border:2px solid var(--surface);}
+.dimrow{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--r-md);cursor:pointer;}
+.dimrow:hover{background:var(--surface-2);} .dimrow input{accent-color:var(--info);width:14px;height:14px;flex:none;}
+.dimrow .nm{flex:1;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dimrow .rv{font-size:11px;color:var(--text-faint);font-variant-numeric:tabular-nums;}
+.dimrow .pin{flex:none;width:20px;text-align:center;color:var(--text-faint);font-size:12px;opacity:0;}
+.dimrow:hover .pin{opacity:1;} .dimrow .pin.on{opacity:1;color:var(--warn);}
+.overlay{position:fixed;inset:0;background:rgba(20,18,14,.4);backdrop-filter:blur(2px);display:grid;place-items:center;z-index:100;animation:fade .2s;}
+.modal{width:560px;max-width:94vw;background:var(--surface);border-radius:14px;box-shadow:var(--el-modal);overflow:hidden;animation:pop .22s ease;}
+.modal-h{padding:18px 22px 14px;border-bottom:.5px solid var(--border);}
+.modal-h .et{font-family:var(--serif);font-size:19px;font-weight:600;} .modal-h .es{font-size:12px;color:var(--text-muted);margin-top:3px;}
+.modal-b{padding:8px 14px;max-height:50vh;overflow-y:auto;}
+.dimcfg{display:flex;align-items:center;gap:13px;padding:13px 10px;border-bottom:.5px solid rgba(0,0,0,.05);} .dimcfg:last-child{border-bottom:0;}
+.dimcfg .ico{width:34px;height:34px;border-radius:9px;background:var(--surface-2);display:grid;place-items:center;font-size:16px;flex:none;}
+.dimcfg .meta{flex:1;} .dimcfg .meta .n{font-size:13.5px;font-weight:600;} .dimcfg .meta .s{font-size:11.5px;color:var(--text-muted);} .dimcfg .meta .s b{color:var(--text);}
+.sw{position:relative;width:42px;height:24px;flex:none;cursor:pointer;} .sw input{opacity:0;width:0;height:0;}
+.sw .track{position:absolute;inset:0;background:var(--surface-3);border-radius:24px;transition:.2s;}
+.sw .knob{position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.2s;}
+.sw input:checked + .track{background:var(--info);} .sw input:checked + .track + .knob{transform:translateX(18px);}
+.modal-f{padding:14px 22px;border-top:.5px solid var(--border);display:flex;align-items:center;gap:10px;}
+.modal-f .hint{font-size:11.5px;color:var(--text-faint);flex:1;}
+.modal-f button{height:36px;padding:0 18px;border-radius:var(--r-md);font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:.5px solid var(--border-strong);background:var(--surface);color:var(--text);}
+.modal-f button.save{background:var(--info);border-color:var(--info);color:#fff;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#23211d;color:#f1efe8;padding:12px 20px;border-radius:10px;
+  font-size:13px;font-weight:500;box-shadow:var(--el-modal);opacity:0;transition:.3s cubic-bezier(.2,.8,.2,1);z-index:200;display:flex;align-items:center;gap:9px;}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;} .toast .ck{color:#5fcf9e;font-size:15px;}
+.banner{margin-top:11px;padding:9px 13px;background:var(--warn-bg);border:.5px solid rgba(133,79,11,.2);border-radius:var(--r-md);font-size:12px;color:var(--warn);}
+.banner b{font-weight:600;} .hidden{display:none!important;}
+
+/* ── Neotec AI panel ─────────────────────────────────── */
+.fab{position:fixed;bottom:24px;right:24px;z-index:150;height:50px;padding:0 20px;border:0;border-radius:26px;cursor:pointer;
+  background:linear-gradient(135deg,#6b3fa0,#8a5fc0);color:#fff;font:inherit;font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px;
+  box-shadow:0 6px 20px rgba(107,63,160,.4);transition:transform .15s;}
+.fab:hover{transform:translateY(-2px);} .fab .star{font-size:16px;}
+body.rtl .fab{right:auto;left:24px;}
+.ai-panel{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:92vw;background:var(--surface);z-index:160;
+  box-shadow:-8px 0 40px rgba(0,0,0,.18);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.15,1);}
+body.rtl .ai-panel{right:auto;left:0;transform:translateX(-100%);box-shadow:8px 0 40px rgba(0,0,0,.18);}
+.ai-panel.open{transform:translateX(0);}
+.ai-h{padding:16px 18px;border-bottom:.5px solid var(--border);background:linear-gradient(135deg,#f3edfb,#fbf9fe);}
+.ai-h .row1{display:flex;align-items:center;gap:10px;}
+.ai-h .badge{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#6b3fa0,#8a5fc0);color:#fff;display:grid;place-items:center;font-size:15px;}
+.ai-h .ttl{font-family:var(--serif);font-size:17px;font-weight:600;} .ai-h .x{margin-left:auto;cursor:pointer;color:var(--text-faint);font-size:19px;}
+body.rtl .ai-h .x{margin-left:0;margin-right:auto;}
+.ai-h .sub{font-size:11px;color:var(--text-muted);margin-top:4px;display:flex;align-items:center;gap:6px;}
+.ai-h .dot{width:7px;height:7px;border-radius:50%;background:var(--pos);box-shadow:0 0 0 3px rgba(15,110,86,.15);}
+.ai-body{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px;}
+.msg{font-size:13px;line-height:1.55;}
+.msg.user{align-self:flex-end;background:var(--info);color:#fff;padding:9px 13px;border-radius:13px 13px 3px 13px;max-width:85%;}
+body.rtl .msg.user{border-radius:13px 13px 13px 3px;align-self:flex-start;}
+.msg.ai{align-self:flex-start;background:var(--surface-2);padding:12px 14px;border-radius:13px 13px 13px 3px;max-width:92%;border:.5px solid var(--border);}
+body.rtl .msg.ai{border-radius:13px 13px 3px 13px;align-self:flex-end;}
+.msg.ai h4{font-size:12px;font-weight:700;margin:8px 0 4px;color:var(--ai);} .msg.ai h4:first-child{margin-top:0;}
+.msg.ai b{font-weight:600;} .msg.ai .pos{color:var(--pos);font-weight:600;} .msg.ai .neg{color:var(--neg);font-weight:600;}
+.msg.ai ul{margin:6px 0 6px 0;padding-left:18px;} body.rtl .msg.ai ul{padding-left:0;padding-right:18px;} .msg.ai li{margin-bottom:4px;}
+.msg.ai .src{margin-top:10px;font-size:10.5px;color:var(--text-faint);border-top:.5px dashed var(--border);padding-top:7px;}
+.thinking{display:flex;gap:5px;align-items:center;color:var(--text-faint);font-size:12px;}
+.thinking .d{width:6px;height:6px;border-radius:50%;background:var(--ai);animation:bounce 1.2s infinite;}
+.thinking .d:nth-child(2){animation-delay:.15s;} .thinking .d:nth-child(3){animation-delay:.3s;}
+@keyframes bounce{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+.chips{display:flex;flex-wrap:wrap;gap:7px;}
+.chip{font-size:11.5px;padding:6px 11px;border:.5px solid var(--ai-border);background:var(--ai-bg);color:var(--ai);border-radius:14px;cursor:pointer;transition:.12s;}
+.chip:hover{background:#ebe0f8;}
+.ai-foot{border-top:.5px solid var(--border);padding:12px 14px;}
+.ai-input{display:flex;gap:8px;align-items:flex-end;}
+.ai-input textarea{flex:1;height:40px;max-height:120px;border:.5px solid var(--border-strong);border-radius:10px;padding:10px 12px;font:inherit;font-size:13px;resize:none;}
+.ai-input textarea:focus{outline:0;border-color:var(--ai);box-shadow:0 0 0 2px rgba(107,63,160,.14);}
+.ai-input button{width:40px;height:40px;border:0;border-radius:10px;background:var(--ai);color:#fff;font-size:16px;cursor:pointer;flex:none;}
+.ai-foot .opt{font-size:10px;color:var(--text-faint);margin-top:8px;text-align:center;}
+</style>
+
+<div class="hdr">
+  <div class="logo">N</div>
+  <div class="brand"><small>NEOTEC</small><h1>Insight<span class="ver">v2.0</span></h1></div>
+  <div class="topnav">
+    <button class="on" data-i="nav_reports" onclick="navTo('nav_reports',this)">Reports</button><button data-i="nav_cfo" onclick="navTo('nav_cfo',this)">CFO Briefing</button><button data-i="nav_dash" onclick="navTo('nav_dash',this)">Dashboard</button>
+    <button data-i="nav_group" onclick="navTo('nav_group',this)">Group</button><button data-i="nav_visuals" onclick="navTo('nav_visuals',this)">Visuals</button><button data-i="nav_erp" onclick="navTo('nav_erp',this)">ERP</button>
+  </div>
+  <button class="langtog" onclick="toggleLang()" id="langBtn">العربية</button>
+</div>
+
+<div class="strip">
+  <div class="grid">
+    <label><span class="flbl" data-i="report">Report</span>
+      <select id="report" onchange="switchReport()">
+        <option value="pnl">Consolidated P&L</option><option value="bs">Balance Sheet</option>
+        <option value="tb">Trial Balance</option><option value="cf">Cash Flow Statement</option>
+      </select></label>
+    <label><span class="flbl" data-i="fy">Fiscal year (preset)</span><select id="fySel" onchange="fillDatesFromFY()"><option data-i="y2026" value="2026">2026</option><option data-i="y2025" value="2025">2025</option></select></label>
+    <label><span class="flbl" data-i="cal">Calendar</span><select><option data-i="cal_local">Local</option><option data-i="cal_group">Group</option></select></label>
+    <label><span class="flbl" data-i="fromd">From date</span><input type="date" id="from_date" value="2026-01-01" onchange="onDateChange()"></label>
+    <label><span class="flbl" data-i="tod">To date</span><input type="date" id="to_date" value="2026-12-31" onchange="onDateChange()"></label>
+    <label><span class="flbl" data-i="gran">Granularity</span><select><option data-i="gran_mq">Monthly + Quarterly</option><option data-i="gran_m">Monthly</option></select></label>
+    <label><span class="flbl" data-i="co">Company</span><select><option data-i="co_irsaa">IRSAA Business Solutions</option></select></label>
+  </div>
+  <div class="viewbar">
+    <span class="vlbl" data-i="viewby">View by</span>
+    <div class="seg" id="seg"><span class="glide" id="glide"></span>
+      <button class="on" data-v="period"  onclick="setView('period',this)"><span class="ic">▦</span><span data-i="period">Period</span></button>
+      <button data-v="dimension" onclick="setView('dimension',this)"><span class="ic">▥</span><span data-i="dimension">Dimension</span></button>
+      <button data-v="years" onclick="setView('years',this)"><span class="ic">▤</span><span data-i="years">Years</span></button>
+      <button data-v="combo" onclick="setView('combo',this)"><span class="ic">⊞</span><span data-i="combo">Combo</span></button>
+    </div>
+    <span class="spacer"></span>
+    <button class="colbtn" onclick="openCfg()" title="Choose which dimensions this report exposes"><span>⚙</span> <span data-i="repdims">Report dimensions</span></button>
+  </div>
+  <div class="subbar" id="subbar"></div>
+  <div class="actions">
+    <button class="primary">↻ <span data-i="run">Run</span></button>
+    <button>⊞ Excel</button><button>⎙ PDF</button><button>⧉ CSV</button><button>◫ <span data-i="viz">Visualize</span></button>
+    <button class="ai" onclick="openAI()">✦ <span data-i="askai">Ask Neotec AI</span></button>
+    <span class="meta" id="meta">412 ms · cached</span>
+  </div>
+</div>
+
+<div id="body"></div>
+<div id="navph" class="navph" style="display:none"></div>
+
+<!-- provision modal -->
+<div class="overlay hidden" id="overlay" onclick="if(event.target===this)closeCfg()">
+  <div class="modal">
+    <div class="modal-h"><div class="et">Dimensions for <span id="cfgReport">Consolidated P&L</span></div>
+      <div class="es">Choose which dimensions this report can pivot and filter by. Saved per report — default all on.</div></div>
+    <div class="modal-b" id="cfgList"></div>
+    <div class="modal-f"><span class="hint">Changes apply to this report for every user.</span>
+      <button onclick="closeCfg()">Cancel</button><button class="save" onclick="saveCfg()">Save</button></div>
+  </div>
+</div>
+
+<!-- AI panel -->
+<button class="fab" onclick="openAI()"><span class="star">✦</span> <span data-i="askai">Ask Neotec AI</span></button>
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-h">
+    <div class="row1"><div class="badge">✦</div><div class="ttl">Neotec AI</div><div class="x" onclick="closeAI()">×</div></div>
+    <div class="sub"><span class="dot"></span> <span data-i="aimodel">powered by NeoNexus · llama3.3 · 100% local</span></div>
+  </div>
+  <div class="ai-body" id="aiBody"></div>
+  <div class="ai-foot">
+    <div class="ai-input">
+      <textarea id="aiInput" data-i-ph="aiph" placeholder="Ask about this report…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"></textarea>
+      <button onclick="sendAI()">↑</button>
+    </div>
+    <div class="opt" data-i="aifoot">Report context is sent to your local model. Nothing leaves your network.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="ck">✓</span><span id="toastMsg"></span></div>
+
+<script>
+/* ── i18n ─────────────────────────────────────────────── */
+const I={
+  en:{report:'Report',fy:'Fiscal year',cal:'Calendar',from:'From',to:'To',gran:'Granularity',co:'Company',
+    viewby:'View by',period:'Period',dimension:'Dimension',years:'Years',combo:'Combo',repdims:'Report dimensions',
+    run:'Run',viz:'Visualize',askai:'Ask Neotec AI',aimodel:'powered by NeoNexus · llama3.3 · 100% local',
+    aiph:'Ask about this report…',aifoot:'Report context is sent to your local model. Nothing leaves your network.',
+    nav_reports:'Reports',nav_cfo:'CFO Briefing',nav_dash:'Dashboard',nav_group:'Group',nav_visuals:'Visuals',nav_erp:'ERP',
+    y2026:'2026',y2025:'2025',cal_local:'Local',cal_group:'Group',m_jan:'Jan',m_dec:'Dec',
+    gran_mq:'Monthly + Quarterly',gran_m:'Monthly',co_irsaa:'IRSAA Business Solutions',fromd:'From date',tod:'To date'},
+  ar:{report:'التقرير',fy:'السنة المالية',cal:'التقويم',from:'من',to:'إلى',gran:'التفصيل',co:'الشركة',
+    viewby:'العرض حسب',period:'الفترة',dimension:'البُعد',years:'السنوات',combo:'مركّب',repdims:'أبعاد التقرير',
+    run:'تشغيل',viz:'تصوّر',askai:'اسأل نيوتك AI',aimodel:'مدعوم بـ NeoNexus · llama3.3 · محلي 100٪',
+    aiph:'اسأل عن هذا التقرير…',aifoot:'يُرسل سياق التقرير إلى نموذجك المحلي. لا شيء يغادر شبكتك.',
+    nav_reports:'التقارير',nav_cfo:'إحاطة المدير المالي',nav_dash:'لوحة المعلومات',nav_group:'المجموعة',nav_visuals:'الرسوم',nav_erp:'نظام ERP',
+    y2026:'٢٠٢٦',y2025:'٢٠٢٥',cal_local:'محلي',cal_group:'المجموعة',m_jan:'يناير',m_dec:'ديسمبر',
+    gran_mq:'شهري + ربع سنوي',gran_m:'شهري',co_irsaa:'إرساء لحلول الأعمال',fromd:'من تاريخ',tod:'إلى تاريخ'},
+};
+let lang='en';
+function toggleLang(){
+  lang=lang==='en'?'ar':'en';
+  document.body.classList.toggle('rtl',lang==='ar');
+  document.getElementById('langBtn').textContent=lang==='en'?'العربية':'English';
+  document.querySelectorAll('[data-i]').forEach(el=>{const k=el.getAttribute('data-i');if(I[lang][k])el.textContent=I[lang][k];});
+  document.querySelectorAll('[data-i-ph]').forEach(el=>{const k=el.getAttribute('data-i-ph');if(I[lang][k])el.placeholder=I[lang][k];});
+  buildReportOptions();
+  renderSub();renderBody();
+  const activeNav=document.querySelector('.topnav button.on');
+  if(activeNav&&activeNav.getAttribute('data-i')!=='nav_reports')navTo(activeNav.getAttribute('data-i'),activeNav);
+  if(document.getElementById('aiPanel').classList.contains('open')){document.querySelectorAll('.chips').forEach(c=>c.remove());addChips();}
+  positionGlide(document.querySelector('#seg button.on'));
+}
+function buildReportOptions(){const sel=document.getElementById('report');const cur=sel.value;
+  [...sel.options].forEach(o=>{o.textContent=lang==='ar'?(REPORT_NAME_AR[o.value]||o.textContent):REPORT_NAME[o.value];});
+  sel.value=cur;}
+
+/* ── Top-nav sections ─────────────────────────────────── */
+const NAV_PH={
+  nav_cfo:{ic:'❖',en:['CFO Briefing','A one-page executive narrative on this period. Not built into this app yet — meanwhile, Ask Neotec AI generates an exec summary from the live report.'],
+    ar:['إحاطة المدير المالي','ملخّص تنفيذي من صفحة واحدة لهذه الفترة. غير مُضمَّن في هذا التطبيق بعد — في الأثناء، يولّد "اسأل نيوتك AI" ملخّصًا تنفيذيًا من التقرير الحيّ.']},
+  nav_dash:{ic:'▦',en:['Dashboard','Pinned KPIs and charts across reports. Lives in the main Neotec Insight app; this app focuses on the report cockpit and AI.'],
+    ar:['لوحة المعلومات','مؤشرات ورسوم مثبّتة عبر التقارير. تتوفّر في تطبيق نيوتك إنسايت الرئيسي؛ هذا التطبيق يركّز على لوحة التقارير والذكاء الاصطناعي.']},
+  nav_group:{ic:'⬡',en:['Group Consolidation','Multi-company roll-up. Configured in the main Neotec Insight app.'],
+    ar:['التجميع على مستوى المجموعة','دمج عدة شركات. يُهيّأ في تطبيق نيوتك إنسايت الرئيسي.']},
+  nav_visuals:{ic:'◫',en:['Visuals','Charted views of the current report. Use the Visualize button on the report toolbar, or Ask Neotec AI.'],
+    ar:['الرسوم','عروض بيانية للتقرير الحالي. استخدم زر "تصوّر" في شريط أدوات التقرير، أو "اسأل نيوتك AI".']},
+  nav_erp:{ic:'⌂',en:['ERP','Opens your ERPNext desk. Available from the main app navigation.'],
+    ar:['نظام ERP','يفتح سطح مكتب ERPNext. متاح من تنقّل التطبيق الرئيسي.']},
+};
+function navTo(key,btn){
+  document.querySelectorAll('.topnav button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const reports=key==='nav_reports';
+  document.querySelector('.strip').style.display=reports?'':'none';
+  document.getElementById('body').style.display=reports?'':'none';
+  const ph=document.getElementById('navph');
+  if(reports){ph.style.display='none';return;}
+  const m=NAV_PH[key],t=m[lang]||m.en;
+  ph.innerHTML=`<div class="ic">${m.ic}</div><h2>${t[0]}</h2><p>${t[1]}</p>
+    <button onclick="openAI()">✦ ${I[lang].askai}</button>`;
+  ph.style.display='';
+}
+
+/* ── Data ─────────────────────────────────────────────── */
+const DIM_TYPES=[
+  {key:'cost_center',icon:'◎',label:'Cost Center',label_ar:'مركز التكلفة',count:36},{key:'project',icon:'◈',label:'Project',label_ar:'المشروع',count:18},
+  {key:'department',icon:'▦',label:'Department',label_ar:'القسم',count:32},{key:'branch',icon:'⌂',label:'Branch',label_ar:'الفرع',count:1},
+  {key:'business_unit',icon:'⬡',label:'Business Unit (custom)',label_ar:'وحدة الأعمال (مخصص)',count:9},{key:'product_line',icon:'⬢',label:'Product Line (custom)',label_ar:'خط المنتج (مخصص)',count:12},
+];
+const reportCfg={pnl:new Set(DIM_TYPES.map(d=>d.key)),bs:new Set(['cost_center','branch']),tb:new Set(['cost_center']),cf:new Set(['cost_center','project'])};
+const REPORT_NAME={pnl:'Consolidated P&L',bs:'Balance Sheet',tb:'Trial Balance',cf:'Cash Flow Statement'};
+const REPORT_NAME_AR={pnl:'الأرباح والخسائر الموحّدة',bs:'الميزانية العمومية',tb:'ميزان المراجعة',cf:'قائمة التدفقات النقدية'};
+
+/* ── Arabic label provision ──────────────────────────────
+ * TR: master English→Arabic map for report lines, sections, KPI labels,
+ * column headers, ratios and UI strings. In production these come from the
+ * Arabic-label fields on Insight Report Definition / Insight Report Dimension
+ * and from the ERPNext account's Arabic name. tr() falls back to English. */
+const TR={
+  // P&L lines + sections
+  'Revenue':'الإيرادات','Other Revenue':'إيرادات أخرى','Total revenue':'إجمالي الإيرادات','Cost of Revenue':'تكلفة الإيرادات',
+  'Direct staff cost':'تكلفة الموظفين المباشرة','Subcontractors':'مقاولو الباطن','Total cost of revenue':'إجمالي تكلفة الإيرادات',
+  'Gross profit':'مجمل الربح','Operating Expenses':'المصروفات التشغيلية','Salaries & wages':'الرواتب والأجور',
+  'Rent & utilities':'الإيجار والمرافق','Depreciation':'الإهلاك','EBITDA':'الأرباح قبل الفوائد والضرائب والإهلاك','Net income':'صافي الدخل',
+  // Balance sheet
+  'Assets':'الأصول','Cash & equivalents':'النقد وما في حكمه','Accounts receivable':'الذمم المدينة','Fixed assets (net)':'الأصول الثابتة (صافي)',
+  'Total assets':'إجمالي الأصول','Liabilities':'الالتزامات','Accounts payable':'الذمم الدائنة','Long-term debt':'ديون طويلة الأجل',
+  'Total liabilities':'إجمالي الالتزامات','Equity':'حقوق الملكية','Share capital':'رأس المال','Retained earnings':'الأرباح المحتجزة','Total equity':'إجمالي حقوق الملكية',
+  // Trial balance
+  'Liabilities & Equity':'الالتزامات وحقوق الملكية','Income':'الإيرادات','Cash — Riyadh HQ':'النقد — مقر الرياض','Trade receivables':'ذمم تجارية مدينة',
+  'Trade payables':'ذمم تجارية دائنة','Service revenue':'إيرادات الخدمات','Total':'الإجمالي',
+  // Cash flow
+  'Operating Activities':'الأنشطة التشغيلية','Depreciation add-back':'إضافة الإهلاك','Working capital change':'التغيّر في رأس المال العامل',
+  'Net cash from operations':'صافي النقد من التشغيل','Investing Activities':'الأنشطة الاستثمارية','Purchase of fixed assets':'شراء أصول ثابتة',
+  'Net cash from investing':'صافي النقد من الاستثمار','Financing Activities':'الأنشطة التمويلية','Debt repayment':'سداد الديون',
+  'Dividends paid':'توزيعات أرباح مدفوعة','Net cash from financing':'صافي النقد من التمويل','Net change in cash':'صافي التغيّر في النقد',
+  // KPI labels
+  'Gross Profit':'مجمل الربح','Net Income':'صافي الدخل','Total Assets':'إجمالي الأصول','Total Liabilities':'إجمالي الالتزامات',
+  'Total Equity':'إجمالي حقوق الملكية','Current Ratio':'النسبة الجارية','Total Debit':'إجمالي المدين','Total Credit':'إجمالي الدائن',
+  'Net Movement':'صافي الحركة','Open Accounts':'الحسابات المفتوحة','Operating CF':'التدفق التشغيلي','Investing CF':'التدفق الاستثماري',
+  'Financing CF':'التدفق التمويلي','Net Change':'صافي التغيّر',
+  // Headline (combo) labels
+  'Working Cap':'رأس المال العامل','Debit':'مدين','Credit':'دائن','Net':'الصافي','Accounts':'الحسابات','Operating':'تشغيلي','Investing':'استثماري','Financing':'تمويلي',
+  // Columns + misc
+  'Actual':'الفعلي','Budget':'الموازنة','FY 2025':'سنة 2025','This year':'السنة الحالية','Last year':'السنة السابقة','Change':'التغيّر','Balance':'الرصيد',
+  '% Grw':'٪ النمو','% Ach':'٪ التحقيق','CAGR':'النمو المركّب','Inbound':'وارد','Outbound':'صادر',
+  'P&L line':'بند الأرباح والخسائر','Balance Sheet line':'بند الميزانية','Account':'الحساب','Cash Flow line':'بند التدفق النقدي',
+  // Ratios
+  'Gross margin':'هامش مجمل الربح','EBITDA margin':'هامش الأرباح التشغيلية','Net margin':'صافي الهامش','Budget ach.':'تحقيق الموازنة',
+  'YoY growth':'النمو السنوي','Opex ratio':'نسبة المصروفات','Current ratio':'النسبة الجارية','Debt / equity':'الدين/حقوق الملكية',
+  'Equity ratio':'نسبة حقوق الملكية','Quick ratio':'النسبة السريعة','ROE':'العائد على حقوق الملكية','Asset growth':'نمو الأصول',
+  'Op. CF margin':'هامش التدفق التشغيلي','Cash conversion':'تحويل النقد','Free cash flow':'التدفق النقدي الحر','Capex ratio':'نسبة الإنفاق الرأسمالي',
+  'Reinvestment':'إعادة الاستثمار','Net Δ cash':'صافي التغيّر النقدي','Debit = Credit':'مدين = دائن','Entries':'القيود','Unposted':'غير مرحّلة',
+  'Suspense':'حساب معلّق','Variance':'الفرق',
+  // Ratio notes
+  '33% target':'الهدف 33٪','sector ~16%':'القطاع ~16٪','of revenue':'من الإيراد','net income':'صافي الدخل','liquidity':'السيولة',
+  'leverage':'الرافعة','of assets':'من الأصول','ex-inventory':'باستثناء المخزون','annualised':'سنوي','vs FY25':'مقابل 2025',
+  'CF / NI':'تدفق/دخل','OCF − capex':'تشغيلي − رأسمالي','of OCF':'من التشغيلي','in balance':'متوازن','active':'نشطة','posted':'مرحّلة',
+  'clean':'نظيفة','none':'لا يوجد','tie-out':'مطابقة','this period':'هذه الفترة',
+  // Subbar / controls
+  '% Growth':'٪ النمو','% of Revenue':'٪ من الإيراد','% Achieved':'٪ المُحقق','Analysis cockpit':'لوحة التحليل','Comparison':'المقارنة',
+  'Actual vs Budget':'الفعلي مقابل الموازنة','Actuals only':'الفعلي فقط','Pivot by':'تجميع حسب','Columns':'الأعمدة','Hide all-zero':'إخفاء الأصفار',
+  'Heatmap':'خريطة حرارية','Comparative years':'سنوات المقارنة','Show % growth':'إظهار ٪ النمو','Show CAGR':'إظهار النمو المركّب',
+  'Outer dim':'البُعد الخارجي','Inner dim':'البُعد الداخلي','Collapse empties':'طيّ الفارغة','Current + 2 priors':'الحالية + سنتان','Current + 3 priors':'الحالية + 3 سنوات',
+  // Cockpit panels + popover + modal
+  'Variance vs budget':'الفرق عن الموازنة','top 5 by impact':'أعلى 5 تأثيرًا','Key ratios':'النسب الرئيسية','vs target / sector':'مقابل الهدف/القطاع',
+  'Visible columns':'الأعمدة الظاهرة','All':'الكل','Top 5':'أعلى 5','Top 10':'أعلى 10','Clear':'مسح','shown':'ظاهر',
+  'Cancel':'إلغاء','Save':'حفظ','Total column':'عمود الإجمالي',
+};
+function tr(en){return lang==='ar'&&en!=null&&TR[en]!=null?TR[en]:en;}
+function rname(id){return lang==='ar'?(REPORT_NAME_AR[id]||REPORT_NAME[id]):REPORT_NAME[id];}
+function dlabel(d){return lang==='ar'?(d.label_ar||d.label):d.label;}
+/* Arabic account / cost-center names. Brand names stay Latin (realistic). */
+const DIM_AR={'Audit & GRC':'التدقيق والحوكمة','Data Processing':'معالجة البيانات','Division':'القسم','Financial Outsourcing':'الإسناد المالي',
+  'Financial Inspection':'التفتيش المالي','Fixed Assets':'الأصول الثابتة','HR Audit':'تدقيق الموارد البشرية','HR Outsourcing':'إسناد الموارد البشرية',
+  'HR Special Projects':'مشاريع الموارد البشرية الخاصة','HR System':'نظام الموارد البشرية','Internal Audit':'التدقيق الداخلي',
+  'IT Business Solutions':'حلول تقنية الأعمال','IT Manage Services':'خدمات إدارة تقنية المعلومات','Main':'الرئيسي','Payroll':'الرواتب',
+  'Pact Payroll In':'باكت رواتب — وارد','Pact Payroll Out':'باكت رواتب — صادر','Recruitment':'التوظيف','Sales IRSAA':'مبيعات إرساء','VAT':'ضريبة القيمة المضافة',
+  'Logistics':'اللوجستيات','Marketing':'التسويق','Procurement':'المشتريات','Treasury':'الخزينة','Legal':'الشؤون القانونية','Facilities':'المرافق',
+  'R&D Labs':'مختبرات البحث والتطوير','Customer Success':'نجاح العملاء','Field Ops':'العمليات الميدانية','QA Center':'مركز الجودة',
+  'Data Science':'علم البيانات','Cloud Infra':'البنية السحابية','Security Ops':'عمليات الأمن','Partnerships':'الشراكات','Training Academy':'أكاديمية التدريب',
+  'Export Desk':'مكتب التصدير','Riyadh HQ':'مقر الرياض','Jeddah Branch':'فرع جدة','Dammam Hub':'مركز الدمام','NEOM Project':'مشروع نيوم',
+  'Vision2030 PMO':'مكتب رؤية 2030','Hajj Services':'خدمات الحج','Zakat Unit':'وحدة الزكاة','Compliance':'الالتزام'};
+function dn(name){return lang==='ar'?(DIM_AR[name]||name):name;}
+const COMPANIES=['AAVIBE','AlphaX ERP','AlphaX FAM','AlphaX PaaS','AlphaX SaaS','Audit & GRC','Booz & Allen','BusinessLine','Crayotech JV','Data Processing','Division','Financial Outsourcing','Financial Inspection','Fixed Assets','GMO','HR Audit','HR Outsourcing','HR Special Projects','HR System','IMCTC','Inteli Tech','Internal Audit','IT Business Solutions','IT Manage Services','ITBS','Keyy Soft JV','Main','MUFTAAH','NII JV','PACT JV','Pact Payroll In','Pact Payroll Out','Payroll','Recruitment','Sales IRSAA','VAT','Logistics','Marketing','Procurement','Treasury','Legal','Facilities','R&D Labs','Customer Success','Field Ops','QA Center','Data Science','Cloud Infra','Security Ops','Partnerships','Training Academy','Export Desk','Riyadh HQ','Jeddah Branch','Dammam Hub','NEOM Project','Vision2030 PMO','Hajj Services','Zakat Unit','Compliance'];
+const dims=COMPANIES.map((n,i)=>({name:n,rev:Math.round(Math.abs(Math.sin(i*1.7)*Math.cos(i*.6))*3.2e6)+(i%7===0?2.8e6:0)}));
+dims.sort((a,b)=>b.rev-a.rev);
+
+const REPORTS={
+  pnl:{cols:['Actual','Budget','FY 2025'],growth:true,
+    kpis:[['Revenue',4748325,'g'],['Gross Profit',1625037,'g'],['EBITDA',843575,'w'],['Net Income',484705,'g']],
+    headline:[['Revenue',4748325],['Gross Profit',1625037],['EBITDA',843575],['Net Income',484705]],
+    rows:[{s:'Revenue'},{l:'Revenue',v:4748325,b:4623000,py:4310000},{l:'Other Revenue',v:0,b:0,py:12000},
+      {l:'Total revenue',v:4748325,b:4623000,py:4322000,sub:1},{s:'Cost of Revenue'},
+      {l:'Direct staff cost',v:-1820000,b:-1760000,py:-1690000},{l:'Subcontractors',v:-1019288,b:-980000,py:-905000},
+      {l:'Total cost of revenue',v:-3123288,b:-3010000,py:-2871000,sub:1},{l:'Gross profit',v:1625037,b:1613000,py:1451000,sub:1},
+      {s:'Operating Expenses'},{l:'Salaries & wages',v:-512000,b:-505000,py:-478000},{l:'Rent & utilities',v:-148000,b:-150000,py:-141000},
+      {l:'Depreciation',v:-121463,b:-120000,py:-115000},{l:'EBITDA',v:843575,b:838000,py:701000,sub:1},{l:'Net income',v:484705,b:472000,py:392000,sub:1}]},
+  bs:{cols:['This year','Last year','Change'],growth:false,
+    kpis:[['Total Assets',12840500,'g'],['Total Liabilities',5210300,'w'],['Total Equity',7630200,'g'],['Current Ratio',1.9,'g']],
+    headline:[['Assets',12840500],['Liabilities',5210300],['Equity',7630200],['Working Cap',3120800]],
+    rows:[{s:'Assets'},{l:'Cash & equivalents',v:2840500,b:2510000,py:2510000},{l:'Accounts receivable',v:3210000,b:2980000,py:2980000},
+      {l:'Fixed assets (net)',v:6790000,b:6420000,py:6420000},{l:'Total assets',v:12840500,b:11910000,py:11910000,sub:1},
+      {s:'Liabilities'},{l:'Accounts payable',v:-1810300,b:-1690000,py:-1690000},{l:'Long-term debt',v:-3400000,b:-3600000,py:-3600000},
+      {l:'Total liabilities',v:-5210300,b:-5290000,py:-5290000,sub:1},{s:'Equity'},{l:'Share capital',v:5000000,b:5000000,py:5000000},
+      {l:'Retained earnings',v:2630200,b:1620000,py:1620000},{l:'Total equity',v:7630200,b:6620000,py:6620000,sub:1}]},
+  tb:{cols:['Debit','Credit','Balance'],growth:false,
+    kpis:[['Total Debit',18920400,'g'],['Total Credit',18920400,'g'],['Net Movement',0,'g'],['Open Accounts',1284,'']],
+    headline:[['Debit',18920400],['Credit',18920400],['Net',0],['Accounts',1284]],
+    rows:[{s:'Assets'},{l:'Cash — Riyadh HQ',v:2840500,b:0,py:2840500},{l:'Trade receivables',v:3210000,b:0,py:3210000},
+      {s:'Liabilities & Equity'},{l:'Trade payables',v:0,b:1810300,py:-1810300},{l:'Share capital',v:0,b:5000000,py:-5000000},
+      {s:'Income'},{l:'Service revenue',v:0,b:4748325,py:-4748325},{l:'Total',v:18920400,b:18920400,py:0,sub:1}]},
+  cf:{cols:['This year','Last year','Change'],growth:false,
+    kpis:[['Operating CF',1284000,'g'],['Investing CF',-640000,'w'],['Financing CF',-310000,'w'],['Net Change',334000,'g']],
+    headline:[['Operating',1284000],['Investing',640000],['Financing',310000],['Net',334000]],
+    rows:[{s:'Operating Activities'},{l:'Net income',v:484705,b:392000,py:392000},{l:'Depreciation add-back',v:121463,b:115000,py:115000},
+      {l:'Working capital change',v:677832,b:540000,py:540000},{l:'Net cash from operations',v:1284000,b:1047000,py:1047000,sub:1},
+      {s:'Investing Activities'},{l:'Purchase of fixed assets',v:-640000,b:-580000,py:-580000},{l:'Net cash from investing',v:-640000,b:-580000,py:-580000,sub:1},
+      {s:'Financing Activities'},{l:'Debt repayment',v:-210000,b:-200000,py:-200000},{l:'Dividends paid',v:-100000,b:-90000,py:-90000},
+      {l:'Net cash from financing',v:-310000,b:-290000,py:-290000,sub:1},{l:'Net change in cash',v:334000,b:177000,py:177000,sub:1}]},
+};
+function R(){return REPORTS[document.getElementById('report').value];}
+function rid(){return document.getElementById('report').value;}
+/* ── Date-range fetch (document/posting date, NOT fiscal year) ──
+ * The report is fetched with posting_date BETWEEN fromDate() AND toDate().
+ * Fiscal year is only a convenience preset that fills these inputs. */
+function fromDate(){return document.getElementById('from_date')?.value||'';}
+function toDate(){return document.getElementById('to_date')?.value||'';}
+function fillDatesFromFY(){const y=document.getElementById('fySel').value;
+  // KSA Jan-start preset; adjust here if the company FY starts another month.
+  document.getElementById('from_date').value=y+'-01-01';
+  document.getElementById('to_date').value=y+'-12-31';
+  onDateChange();}
+function onDateChange(){renderBody();/* would re-run run_report(from,to) against the backend */}
+let view='period';
+/* Arabic-Indic numerals for "complete Arabic". Western digits in finance are
+ * also common in KSA, so this is driven by the language toggle. */
+function arNum(s){if(lang!=='ar')return String(s);return String(s)
+  .replace(/[0-9]/g,d=>'٠١٢٣٤٥٦٧٨٩'[+d])
+  .replace(/(?<=[٠-٩]),(?=[٠-٩])/g,'٬')
+  .replace(/(?<=[٠-٩])\.(?=[٠-٩])/g,'٫')
+  .replace(/%/g,'٪');}
+// convert digits inside text nodes only (skips tags/attributes), for AI HTML
+function arHtml(h){return lang==='ar'?String(h).replace(/>([^<]+)</g,(m,t)=>'>'+arNum(t)+'<'):h;}
+const fmt=n=>{const s=Math.round(n).toLocaleString('en-US');return lang==='ar'?arNum(s):s;};
+const fmtM=n=>{const s=(n/1e6).toFixed(2);return lang==='ar'?arNum(s)+' م':s+'M';};
+const pct=(n,d=1)=>{const s=(n*100).toFixed(d);return lang==='ar'?arNum(s)+'٪':s+'%';};
+const pf=(x,d=1)=>{const s=Number(x).toFixed(d);return lang==='ar'?arNum(s)+'٪':s+'%';};
+
+/* seeded 12-month series for sparklines/trend */
+function series(base,seed){const out=[];let v=base*0.78;for(let i=0;i<12;i++){v+=base*0.04*(Math.sin(seed+i*0.9)+0.6);out.push(Math.max(0,v));}return out;}
+function sparkline(data,color){
+  const w=72,h=22,mn=Math.min(...data),mx=Math.max(...data),rng=(mx-mn)||1;
+  const pts=data.map((d,i)=>[i/(data.length-1)*w,h-((d-mn)/rng)*(h-3)-1.5]);
+  const path=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area=path+` L${w} ${h} L0 ${h} Z`;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
+    <path d="${area}" fill="${color}" opacity="0.10"/><path d="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
+    <circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="2" fill="${color}"/></svg>`;
+}
+
+/* ── VIEW BY ──────────────────────────────────────────── */
+function positionGlide(btn){const g=document.getElementById('glide');if(!btn)return;
+  if(lang==='ar'){g.style.right=(btn.parentElement.offsetWidth-btn.offsetLeft-btn.offsetWidth)+'px';g.style.left='auto';}
+  else{g.style.left=btn.offsetLeft+'px';g.style.right='auto';}g.style.width=btn.offsetWidth+'px';}
+function setView(v,btn){view=v;document.querySelectorAll('#seg button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');positionGlide(btn);renderSub();renderBody();}
+function enabledDims(){return DIM_TYPES.filter(d=>reportCfg[rid()].has(d.key));}
+function dimOptions(){return enabledDims().map(d=>`<option value="${d.key}">${dlabel(d)}</option>`).join('');}
+function renderSub(){
+  const sb=document.getElementById('subbar');
+  if(view==='period'){
+    sb.innerHTML=`<label class="chk"><input type="checkbox" checked> ${tr('% Growth')}</label>
+      <label class="chk"><input type="checkbox"> ${tr('% of Revenue')}</label>
+      <label class="chk"><input type="checkbox"> ${tr('% Achieved')}</label>
+      <label class="chk"><input type="checkbox" id="anal" checked onchange="renderBody()"> ${tr('Analysis cockpit')}</label>
+      <div class="mini"><span class="flbl">${tr('Comparison')}</span><select><option>${tr('Actual vs Budget')}</option><option>${tr('Actuals only')}</option></select></div>`;
+  }else if(view==='dimension'){
+    sb.innerHTML=`<div class="mini"><span class="flbl">${tr('Pivot by')}</span><select id="pivotby" onchange="renderBody()">${dimOptions()}</select></div>
+      <button class="colbtn" id="colbtn" onclick="toggleCols(event)">⊟ ${tr('Columns')} <span class="pill" id="colcount"></span></button>
+      <label class="chk"><input type="checkbox" id="hz" checked onchange="renderBody()"> ${tr('Hide all-zero')}</label>
+      <label class="chk"><input type="checkbox" id="heat" onchange="renderBody()"> ${tr('Heatmap')}</label>`;
+    initColState();
+  }else if(view==='years'){
+    sb.innerHTML=`<div class="mini"><span class="flbl">${tr('Comparative years')}</span><select onchange="renderBody()"><option>${tr('Current + 2 priors')}</option><option>${tr('Current + 3 priors')}</option></select></div>
+      <label class="chk"><input type="checkbox" checked> ${tr('Show % growth')}</label><label class="chk"><input type="checkbox" checked> ${tr('Show CAGR')}</label>`;
+  }else{
+    sb.innerHTML=`<div class="mini"><span class="flbl">${tr('Outer dim')}</span><select onchange="renderBody()">${dimOptions()}</select></div>
+      <div class="mini"><span class="flbl">${tr('Inner dim')}</span><select onchange="renderBody()">${dimOptions()}</select></div>
+      <label class="chk"><input type="checkbox" checked> ${tr('Collapse empties')}</label>`;
+  }
+}
+
+/* ── Columns manager ──────────────────────────────────── */
+let visible=new Set(),pinned=new Set(),popOpen=false;
+function initColState(){if(visible.size===0)dims.slice(0,12).forEach(d=>visible.add(d.name));updateColCount();}
+function updateColCount(){const el=document.getElementById('colcount');if(el)el.textContent=`${visible.size} of ${dims.length}`;}
+function toggleCols(e){e.stopPropagation();if(popOpen){closePop();return;}
+  const btn=document.getElementById('colbtn'),r=btn.getBoundingClientRect(),p=document.createElement('div');
+  p.className='popover';p.id='pop';p.style.left=Math.min(r.left,window.innerWidth-356)+'px';p.style.top=(r.bottom+window.scrollY+8)+'px';
+  p.innerHTML=`<div class="pop-head"><div class="t">${tr('Visible columns')} <span class="x" onclick="closePop()">×</span></div>
+    <div class="pop-search"><span class="si">⌕</span><input type="text" id="dimsearch" placeholder="${lang==='ar'?'ابحث في '+dims.length+' مركز تكلفة…':'Search '+dims.length+' cost centers…'}" oninput="renderDimList()"></div></div>
+    <div class="pop-quick"><button onclick="selAll()">${tr('All')}</button><button onclick="selTop(5)">${tr('Top 5')}</button><button onclick="selTop(10)">${tr('Top 10')}</button>
+      <button onclick="selNone()">${tr('Clear')}</button><span class="cnt" id="popcnt"></span></div><div class="pop-list" id="dimlist"></div>`;
+  document.body.appendChild(p);popOpen=true;renderDimList();setTimeout(()=>document.addEventListener('click',outside),0);}
+function outside(e){const p=document.getElementById('pop');if(p&&!p.contains(e.target))closePop();}
+function closePop(){const p=document.getElementById('pop');if(p)p.remove();popOpen=false;document.removeEventListener('click',outside);}
+function renderDimList(){const q=(document.getElementById('dimsearch')?.value||'').toLowerCase(),list=document.getElementById('dimlist');if(!list)return;
+  const filt=dims.filter(d=>d.name.toLowerCase().includes(q)||dn(d.name).includes(q));
+  list.innerHTML=filt.map(d=>`<label class="dimrow"><input type="checkbox" ${visible.has(d.name)?'checked':''} onchange="tgl('${d.name.replace(/'/g,"\\'")}')">
+    <span class="nm">${dn(d.name)}</span><span class="rv">${fmtM(d.rev)}</span>
+    <span class="pin ${pinned.has(d.name)?'on':''}" onclick="event.preventDefault();tglPin('${d.name.replace(/'/g,"\\'")}')" title="Pin to front">⚲</span></label>`).join('')
+    ||`<div style="padding:18px;text-align:center;color:var(--text-faint);font-size:12px">${lang==='ar'?'لا نتيجة لـ "'+q+'".':'No match for "'+q+'".'}</div>`;
+  document.getElementById('popcnt').textContent=`${visible.size} ${tr('shown')}`;}
+function tgl(n){visible.has(n)?visible.delete(n):visible.add(n);updateColCount();renderDimList();renderBody();}
+function tglPin(n){pinned.has(n)?pinned.delete(n):(pinned.add(n),visible.add(n));updateColCount();renderDimList();renderBody();}
+function selAll(){dims.forEach(d=>visible.add(d.name));updateColCount();renderDimList();renderBody();}
+function selNone(){visible.clear();pinned.forEach(p=>visible.add(p));updateColCount();renderDimList();renderBody();}
+function selTop(n){visible.clear();dims.slice(0,n).forEach(d=>visible.add(d.name));pinned.forEach(p=>visible.add(p));updateColCount();renderDimList();renderBody();}
+
+/* ── Analysis helpers ─────────────────────────────────── */
+function getRow(l){return R().rows.find(r=>r.l===l);}
+function lineVariances(){return R().rows.filter(r=>r.l&&!r.sub&&r.b!=null&&(r.v-r.b)!==0).map(r=>({l:r.l,d:r.v-r.b})).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,5);}
+function ratios(){
+  const r=rid();
+  if(r==='pnl'){const rev=getRow('Revenue').v,gp=getRow('Gross profit').v,eb=getRow('EBITDA').v,ni=getRow('Net income').v,niP=getRow('Net income').py,niB=getRow('Net income').b;
+    return [['Gross margin',pct(gp/rev),(gp/rev>=.33?'up':'dn'),'33% target'],
+      ['EBITDA margin',pct(eb/rev),(eb/rev>=.17?'up':'dn'),'sector ~16%'],
+      ['Net margin',pct(ni/rev),'fl','of revenue'],
+      ['Budget ach.',pct(ni/niB),(ni>=niB?'up':'dn'),'net income'],
+      ['YoY growth',pct((ni-niP)/Math.abs(niP)),(ni>=niP?'up':'dn'),'net income'],
+      ['Opex ratio',pct(Math.abs(getRow('Salaries & wages').v+getRow('Rent & utilities').v+getRow('Depreciation').v)/rev),'fl','of revenue']];}
+  if(r==='bs'){return [['Current ratio','1.9×','up','liquidity'],['Debt / equity',(3400000/7630200).toFixed(2)+'×','fl','leverage'],
+      ['Equity ratio',pct(7630200/12840500),'up','of assets'],['Quick ratio','1.4×','up','ex-inventory'],
+      ['ROE',pct(484705/7630200),'fl','annualised'],['Asset growth',pct((12840500-11910000)/11910000),'up','vs FY25']];}
+  if(r==='cf'){return [['Op. CF margin',pct(1284000/4748325),'up','of revenue'],['Cash conversion',pct(1284000/484705),'up','CF / NI'],
+      ['Free cash flow',fmt(1284000-640000),'up','OCF − capex'],['Capex ratio',pct(640000/4748325),'fl','of revenue'],
+      ['Reinvestment',pct(640000/1284000),'fl','of OCF'],['Net Δ cash',fmt(334000),'up','this period']];}
+  return [['Debit = Credit','Balanced','up','in balance'],['Accounts','1,284','fl','active'],['Entries','8,940','fl','posted'],
+    ['Unposted','0','up','clean'],['Suspense','0','up','none'],['Variance','0','up','tie-out']];
+}
+
+/* ── Body renderers ───────────────────────────────────── */
+function kpis(){
+  const colorOf=c=>c==='g'?'#0f6e56':c==='w'?'#854f0b':c==='r'?'#a32d2d':'#185fa5';
+  return `<div class="kpis">`+R().kpis.map((k,i)=>{
+    const isRatio=typeof k[1]==='number'&&k[1]<100;
+    const ser=series(Math.abs(k[1])||100,i*1.3);
+    const head=getRow(k[0]==='Revenue'?'Revenue':k[0])||{};
+    const ld=R().growth&&head.py?((head.v-head.py)/Math.abs(head.py)*100):null;
+    const bd=head.b?((head.v/head.b-1)*100):null;
+    let sub='';
+    if(ld!=null)sub=`<span class="${ld>=0?'up':'dn'}">${ld>=0?'+':''}${pf(ld)}</span> ${lang==='ar'?'مقابل ٢٠٢٥':'vs FY2025'}`;
+    else if(rid()==='bs'&&i===3)sub=lang==='ar'?'سيولة صحية':'healthy liquidity';
+    else if(bd!=null)sub=`<span class="${bd>=0?'up':'dn'}">${bd>=0?'+':''}${pf(bd)}</span> ${lang==='ar'?'مقابل الموازنة':'vs budget'}`;
+    else sub=tr('this period');
+    return `<div class="kpi ${k[2]}">
+      <div class="ai" onclick="askAbout('${k[0]}')" title="Explain with AI">✦</div>
+      <div class="top"><div class="l">${tr(k[0])}</div></div>
+      <div class="v num">${isRatio?(arNum(k[1]+'')+(rid()==='bs'&&i===3?'×':'')):fmt(k[1])}</div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px">
+        <div class="d">${sub}</div>${sparkline(ser,colorOf(k[2]))}</div></div>`;}).join('')+`</div>`;
+}
+function cockpit(){
+  const rs=ratios(),vs=lineVariances(),mx=Math.max(...vs.map(v=>Math.abs(v.d)))||1;
+  const trend=series(R().headline[0][1],2);
+  return `<div class="cockpit">
+    <div class="panel"><h3>${tr('Variance vs budget')} <span class="hint">${tr('top 5 by impact')}</span></h3>
+      ${vs.map(v=>`<div class="var-row"><span class="vl">${tr(v.l)}</span>
+        <div class="var-track"><div class="mid"></div>
+          <div class="var-bar ${v.d>=0?'pos':'neg'}" style="width:${(Math.abs(v.d)/mx*48).toFixed(1)}%"></div></div>
+        <span class="var-amt ${v.d>=0?'pos':'neg'}">${v.d>=0?'+':''}${fmt(v.d)}</span></div>`).join('')}
+    </div>
+    <div class="panel"><h3>${tr('Key ratios')} <span class="hint">${tr('vs target / sector')}</span></h3>
+      <div class="ratios">${rs.map(r=>`<div class="ratio"><div class="rl">${tr(r[0])}</div><div class="rv">${arNum(r[1])}</div>
+        <div class="rb ${r[2]}">${r[2]==='up'?'▲':r[2]==='dn'?'▼':'•'} ${tr(r[3])}</div></div>`).join('')}</div>
+    </div></div>`;
+}
+function reportLineLabel(){return tr({pnl:'P&L line',bs:'Balance Sheet line',tb:'Account',cf:'Cash Flow line'}[rid()]);}
+function periodTable(){
+  const rep=R(),C=rep.cols,g=rep.growth;
+  let head=`<th class="rowhead">${reportLineLabel()}</th><th>${tr(C[0])}</th><th>${tr(C[1])}</th><th>${tr(C[2])}</th>`;
+  if(g)head+=`<th>${tr('% Grw')}</th><th>${tr('% Ach')}</th>`;const span=g?6:4;
+  let h=`<div class="tcard"><div class="tscroll"><table><thead><tr>${head}</tr></thead><tbody>`;
+  rep.rows.forEach(r=>{if(r.s){h+=`<tr class="sect"><td colspan="${span}">${tr(r.s)}</td></tr>`;return;}
+    const grw=r.py?((r.v-r.py)/Math.abs(r.py)*100):0,ach=r.b?(r.v/r.b*100):0;
+    h+=`<tr class="${r.sub?'sub':''}"><td class="rowlabel">${tr(r.l)}</td>
+      <td class="${r.v<0?'neg':r.v===0?'zero':''} num">${fmt(r.v)}</td>
+      <td class="num" style="background:var(--budget-bg)">${fmt(r.b)}</td>
+      <td class="num" style="background:var(--prior-bg)">${fmt(r.py)}</td>
+      ${g?`<td class="num ${grw<0?'neg':''}">${r.py?pf(grw):'—'}</td><td class="num">${r.b?pf(ach,0):'—'}</td>`:''}</tr>`;});
+  return h+`</tbody></table></div></div>`;
+}
+function dimTable(){
+  let cols=dims.filter(d=>visible.has(d.name));const tl=false,heat=document.getElementById('heat')?.checked;
+  cols.sort((a,b)=>{const pa=pinned.has(a.name),pb=pinned.has(b.name);return pa!==pb?(pa?-1:1):b.rev-a.rev;});
+  const factor=n=>n.name.charCodeAt(0)%5===0?0:(n.rev/4748325);
+  let head=`<th class="rowhead">${reportLineLabel()}</th><th class="coltotal">${tr('Total')}</th>`;
+  head+=cols.map(c=>{const nm=dn(c.name);return `<th title="${nm}">${pinned.has(c.name)?'⚲ ':''}${nm.length>13?nm.slice(0,12)+'…':nm}</th>`;}).join('');
+  let h=`<div class="tcard"><div class="tscroll"><table><thead><tr>${head}</tr></thead><tbody>`;
+  R().rows.forEach(r=>{if(r.s){h+=`<tr class="sect"><td colspan="${cols.length+2}">${tr(r.s)}</td></tr>`;return;}
+    const vals=cols.map(c=>Math.round(r.v*factor(c)*0.5)),mx=Math.max(1,...vals.map(Math.abs));
+    const cells=cols.map((c,i)=>{const v=vals[i];let st='';
+      if(heat&&v!==0){const a=(Math.abs(v)/mx*0.5).toFixed(2);st=`style="background:${v<0?'rgba(163,45,45,'+a+')':'rgba(15,110,86,'+a+')'}"`;}
+      return `<td class="heat ${v<0?'neg':v===0?'zero':''} num" ${st}>${v?fmt(v):'0'}</td>`;}).join('');
+    h+=`<tr class="${r.sub?'sub':''}"><td class="rowlabel">${tr(r.l)}</td><td class="coltotal num ${r.v<0?'neg':''}">${fmt(r.v)}</td>${cells}</tr>`;});
+  const dimLbl=document.getElementById('pivotby')?.selectedOptions[0]?.text||(lang==='ar'?'الأبعاد':'dimensions');
+  const banner=lang==='ar'
+    ? `عرض <b>${cols.length}</b> من <b>${dims.length}</b> ${dimLbl}. استخدم <b>${tr('Columns')}</b> للبحث والتثبيت والإخفاء — دون جدار رقاقات.`
+    : `Showing <b>${cols.length}</b> of <b>${dims.length}</b> ${dimLbl}. Use <b>Columns</b> to search, pin, or hide — no chip wall.`;
+  return h+`</tbody></table></div></div><div class="banner">${banner}</div>`;
+}
+function yearsTable(){
+  let h=`<div class="tcard"><div class="tscroll"><table><thead><tr><th class="rowhead">${reportLineLabel()}</th>
+    <th>FY 2024</th><th>FY 2025</th><th class="coltotal">FY 2026</th><th>${tr('% Grw')}</th><th>${tr('CAGR')}</th></tr></thead><tbody>`;
+  R().rows.forEach(r=>{if(r.s){h+=`<tr class="sect"><td colspan="6">${tr(r.s)}</td></tr>`;return;}
+    const y24=Math.round(r.py*0.92),y25=r.py,y26=r.v,grw=y25?((y26-y25)/Math.abs(y25)*100):0,
+      cagr=(y24>0&&y26>0)?((Math.pow(y26/y24,1/2)-1)*100):0;
+    h+=`<tr class="${r.sub?'sub':''}"><td class="rowlabel">${tr(r.l)}</td><td class="num">${fmt(y24)}</td><td class="num">${fmt(y25)}</td>
+      <td class="coltotal num ${y26<0?'neg':''}">${fmt(y26)}</td><td class="num ${grw<0?'neg':''}">${pf(grw)}</td>
+      <td class="num ${cagr<0?'neg':''}">${cagr?pf(cagr):'—'}</td></tr>`;});
+  return h+`</tbody></table></div></div>`;
+}
+function comboTable(){
+  const outer=dlabel(enabledDims()[0]||{label:'Cost Center'}),inner=dlabel(enabledDims()[1]||{label:'Project'}),H=R().headline;
+  let h=`<div class="tcard"><div class="tscroll"><table><thead><tr><th class="rowhead">${outer}</th><th class="rowhead rl2">${inner}</th>
+    <th>${tr(H[0][0])}</th><th>${tr(H[1][0])}</th><th>${tr(H[2][0])}</th><th class="coltotal">${tr(H[3][0])}</th></tr></thead><tbody>`;
+  dims.slice(0,8).forEach(d=>{for(let j=0;j<2;j++){const f=(d.rev/4748325)*(j?0.4:0.6);
+    h+=`<tr><td class="rowlabel">${j===0?dn(d.name):''}</td><td class="rowlabel rl2">${tr(['Inbound','Outbound'][j])}</td>
+      <td class="num">${fmt(H[0][1]*f*.3)}</td><td class="num">${fmt(H[1][1]*f*.3)}</td><td class="num">${fmt(H[2][1]*f*.3)}</td>
+      <td class="coltotal num">${fmt(H[3][1]*f*.3)}</td></tr>`;}});
+  return h+`</tbody></table></div></div>`;
+}
+function renderBody(){
+  const b=document.getElementById('body');
+  const ms=(280+Math.floor(Math.random()*900));
+  document.getElementById('meta').textContent=lang==='ar'?(arNum(ms)+' مللي ثانية · مخزّن مؤقتًا'):(ms+' ms · cached');
+  if(view==='period'){const c=document.getElementById('anal')?.checked!==false;b.innerHTML=kpis()+(c?cockpit():'')+periodTable();}
+  else if(view==='dimension'){updateColCount();b.innerHTML=dimTable();}
+  else if(view==='years')b.innerHTML=kpis()+yearsTable();
+  else b.innerHTML=comboTable();
+}
+function switchReport(){document.getElementById('cfgReport').textContent=rname(rid());renderSub();renderBody();
+  toast(lang==='ar'?`تم التحويل إلى ${rname(rid())} — انتقل وضع العرض`:`Switched to ${REPORT_NAME[rid()]} — View by carried over`);}
+
+/* ── Provision modal ──────────────────────────────────── */
+let cfgDraft=null;
+function openCfg(){cfgDraft=new Set(reportCfg[rid()]);
+  document.getElementById('cfgReport').textContent=rname(rid());
+  document.getElementById('cfgList').innerHTML=DIM_TYPES.map(d=>`<div class="dimcfg"><div class="ico">${d.icon}</div>
+    <div class="meta"><div class="n">${dlabel(d)}</div><div class="s"><b>${d.count}</b> ${lang==='ar'?'قيمة في ERPNext':('value'+(d.count!==1?'s':'')+' in ERPNext')}</div></div>
+    <label class="sw"><input type="checkbox" ${cfgDraft.has(d.key)?'checked':''} onchange="toggleDraft('${d.key}',this.checked)"><span class="track"></span><span class="knob"></span></label></div>`).join('');
+  // localize the modal's static header + footer
+  const m=document.querySelector('#overlay .modal');
+  m.querySelector('.es').textContent=lang==='ar'?'اختر الأبعاد التي يمكن لهذا التقرير التجميع والتصفية حسبها. يُحفظ لكل تقرير — الكل مفعّل افتراضيًا.':'Choose which dimensions this report can pivot and filter by. Saved per report — default all on.';
+  m.querySelector('.modal-h .et').firstChild.textContent=lang==='ar'?'أبعاد ':'Dimensions for ';
+  m.querySelector('.modal-f .hint').textContent=lang==='ar'?'تنطبق التغييرات على هذا التقرير لكل المستخدمين.':'Changes apply to this report for every user.';
+  const btns=m.querySelectorAll('.modal-f button');btns[0].textContent=tr('Cancel');btns[1].textContent=tr('Save');
+  document.getElementById('overlay').classList.remove('hidden');}
+function toggleDraft(k,on){on?cfgDraft.add(k):cfgDraft.delete(k);}
+function closeCfg(){document.getElementById('overlay').classList.add('hidden');}
+function saveCfg(){reportCfg[rid()]=new Set(cfgDraft);closeCfg();renderSub();renderBody();
+  toast(lang==='ar'?`تم الحفظ — ${rname(rid())} يعرض الآن ${cfgDraft.size} نوع أبعاد`:`Saved — ${REPORT_NAME[rid()]} now exposes ${cfgDraft.size} dimension type${cfgDraft.size!==1?'s':''}`);}
+
+/* ── Neotec AI (analysis engine on real on-screen numbers) ── */
+/* Report-aware suggested questions. Common set + per-report set.
+   Each maps to a computed answer in genAnswer(). */
+const SUGG_COMMON={
+  en:['Summarise this report','Any red flags or anomalies?','What should I tell the board?'],
+  ar:['لخّص هذا التقرير','أي مخاطر أو حالات شاذة؟','ماذا أقول لمجلس الإدارة؟'],
+};
+const SUGG_BY={
+  pnl:{en:['Where are we over / under budget?','Break down profitability margins','What is driving the change vs last year?','What are the biggest cost overruns?','Where can we cut costs safely?','How concentrated is our revenue?','Which cost centers underperform?','Forecast the full year'],
+       ar:['أين تجاوزنا أو قلّ عن الموازنة؟','حلّل هوامش الربحية','ما الذي يدفع التغيّر مقابل العام الماضي؟','ما أكبر تجاوزات التكاليف؟','أين يمكن خفض التكاليف بأمان؟','ما مدى تركّز الإيرادات؟','أي مراكز التكلفة دون المستوى؟','توقّع نتيجة السنة كاملة']},
+  bs:{en:['Is our liquidity healthy?','How leveraged are we?','How did equity change vs last year?','What is our working-capital position?','Any balance-sheet risks?'],
+      ar:['هل السيولة لدينا صحية؟','ما مدى رافعتنا المالية؟','كيف تغيّرت حقوق الملكية مقابل العام الماضي؟','ما وضع رأس المال العامل؟','أي مخاطر في الميزانية العمومية؟']},
+  cf:{en:['How strong is cash generation?','What is our free cash flow?','Can we cover debt and dividends?','How does cash flow compare to last year?','Forecast the full year'],
+      ar:['ما قوة توليد النقد؟','ما التدفق النقدي الحر؟','هل نغطي الديون والأرباح الموزّعة؟','كيف يقارن التدفق النقدي بالعام الماضي؟','توقّع نتيجة السنة كاملة']},
+  tb:{en:['Is the trial balance balanced?','What are the largest account balances?','Any unusual or suspense entries?'],
+      ar:['هل ميزان المراجعة متوازن؟','ما أكبر أرصدة الحسابات؟','أي قيود غير معتادة أو معلّقة؟']},
+};
+function suggestions(){return (SUGG_COMMON[lang]||[]).concat((SUGG_BY[rid()]&&SUGG_BY[rid()][lang])||[]);}
+let aiStarted=false;
+/* ── Backend bridge (Frappe / NeoNexus). Same-origin iframe → parent.frappe.
+ *    Falls back to the local analysis engine when no backend is reachable. ── */
+const FRAPPE=(()=>{try{return (window.parent&&window.parent!==window&&window.parent.frappe)?window.parent.frappe:(window.frappe||null);}catch(e){return null;}})();
+let aiBackend=false;
+function buildContext(){const rep=R();return `Report: ${REPORT_NAME[rid()]} · period (posting date): ${fromDate()} → ${toDate()}\n`+
+  rep.rows.filter(r=>r.l).map(r=>`- ${r.l}: actual ${Math.round(r.v)}`+(r.b!=null?`, budget ${Math.round(r.b)}`:'')+(r.py!=null?`, prior-year ${Math.round(r.py)}`:'')).join('\n');}
+function backendAsk(q){return new Promise((res,rej)=>{if(!FRAPPE||!aiBackend){rej();return;}
+  try{FRAPPE.call({method:'neotec_insight_ai.api.ask_ai',args:{report:rid(),question:q,lang:lang,context:buildContext(),from_date:fromDate(),to_date:toDate()},
+    callback:r=>res(r&&r.message&&r.message.text?r.message.text:''),error:()=>rej()});}catch(e){rej();}});}
+function mdLite(t){return '<h4>Neotec AI</h4>'+String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')+SRC();}
+function loadBootstrap(){if(!FRAPPE)return;try{FRAPPE.call({method:'neotec_insight_ai.api.get_bootstrap',callback:r=>{
+  const m=r&&r.message;if(!m)return;aiBackend=!!(m.ai&&m.ai.enabled);
+  const sub=document.querySelector('.ai-h .sub');
+  if(sub&&m.ai){sub.innerHTML=`<span class="dot" style="background:${aiBackend?'var(--pos)':'var(--warn)'}"></span> powered by NeoNexus · ${m.ai.model||'llama3'} · ${aiBackend?'connected':'sample mode'}`;}
+}});}catch(e){}}
+function openAI(){document.getElementById('aiPanel').classList.add('open');if(!aiStarted){aiStarted=true;greet();}}
+function closeAI(){document.getElementById('aiPanel').classList.remove('open');}
+function greet(){const b=document.getElementById('aiBody');b.innerHTML='';pushAI(lang==='ar'?arHtml(genSummary()):genSummary(),true);}
+function pushUser(t){const b=document.getElementById('aiBody'),d=document.createElement('div');d.className='msg user';d.textContent=t;b.appendChild(d);b.scrollTop=b.scrollHeight;}
+function showThinkingAI(){const b=document.getElementById('aiBody');document.querySelectorAll('.chips').forEach(c=>c.remove());
+  const t=document.createElement('div');t.className='msg ai';
+  t.innerHTML='<div class="thinking"><span class="d"></span><span class="d"></span><span class="d"></span></div>';
+  b.appendChild(t);b.scrollTop=b.scrollHeight;return t;}
+function addChips(){const b=document.getElementById('aiBody');const chips=document.createElement('div');chips.className='chips';
+  chips.innerHTML=suggestions().map(q=>`<span class="chip" onclick="ask('${q.replace(/'/g,"\\'")}')">${q}</span>`).join('');b.appendChild(chips);b.scrollTop=b.scrollHeight;}
+function fillAI(node,html){node.innerHTML=html;addChips();}
+function pushAI(html,instant){const b=document.getElementById('aiBody');document.querySelectorAll('.chips').forEach(c=>c.remove());
+  if(instant){const d=document.createElement('div');d.className='msg ai';d.innerHTML=html;b.appendChild(d);addChips();return;}
+  const t=showThinkingAI();setTimeout(()=>fillAI(t,html),850);}
+function respond(q,fallbackName){const n=showThinkingAI();
+  backendAsk(q).then(txt=>fillAI(n,txt?mdLite(txt):genAnswer(fallbackName||q)))
+    .catch(()=>setTimeout(()=>fillAI(n,genAnswer(fallbackName||q)),420));}
+function ask(q){pushUser(q);respond(q);}
+function askAbout(name){openAI();setTimeout(()=>{pushUser((lang==='ar'?'اشرح ':'Explain ')+name);respond(name,name);},220);}
+function sendAI(){const i=document.getElementById('aiInput'),t=i.value.trim();if(!t)return;i.value='';ask(t);}
+const SRC=()=>lang==='ar'
+  ? `<div class="src">المصدر: ${rname(rid())} · حسب تاريخ القيد ${arNum(fromDate())} → ${arNum(toDate())} · عبر NeoNexus (محلي)</div>`
+  : `<div class="src">Source: ${REPORT_NAME[rid()]} · by posting date ${fromDate()} → ${toDate()} · via NeoNexus (local)</div>`;
+function genSummary(){
+  const r=rid();
+  if(lang==='ar'){
+    if(r==='pnl')return `<h4>الملخص التنفيذي</h4>الإيراد <b>4,748,325</b> بنمو <span class="pos">+9.9٪</span> عن 2025، وبهامش ربح إجمالي <b>34.2٪</b>. صافي الدخل <b>484,705</b> أعلى من الموازنة بـ <span class="pos">+2.7٪</span>.
+      <h4>للمراقبة</h4><ul><li>تجاوز بند مقاولي الباطن الموازنة بـ <span class="neg">${fmt(Math.abs(getRow('Subcontractors').v-getRow('Subcontractors').b))}</span> — أكبر فرق سلبي.</li>
+      <li>تكلفة الموظفين المباشرة تجاوزت الخطة؛ الهامش صمد بفضل تجاوز الإيراد.</li></ul>${SRC()}`;
+    if(r==='bs')return `<h4>الملخص التنفيذي</h4>إجمالي الأصول <b>12,840,500</b> (<span class="pos">+7.8٪</span> عن 2025)، مموّلة بنسبة 59٪ من حقوق الملكية. النسبة الجارية <b>1.9×</b> تشير إلى سيولة مريحة، ونسبة الدين/حقوق الملكية متحفّظة عند 0.45×. ارتفعت الأرباح المحتجزة بأرباح السنة.${SRC()}`;
+    if(r==='cf')return `<h4>الملخص التنفيذي</h4>نقد التشغيل <b>1,284,000</b> يغطّي صافي الدخل <b>2.6×</b> — جودة تحويل نقدي عالية. بعد إنفاق رأسمالي <b>640,000</b> يبلغ التدفق الحر <span class="pos">644,000</span>. تترك التدفقات التمويلية البالغة 310,000 (ديون + توزيعات) زيادة نقدية صافية <b>334,000</b>.${SRC()}`;
+    return `<h4>الملخص التنفيذي</h4>ميزان المراجعة متطابق — إجمالي المدين يساوي إجمالي الدائن عند <b>18,920,400</b> عبر 1,284 حسابًا، دون قيود معلّقة أو غير مرحّلة.${SRC()}`;
+  }
+  if(r==='pnl'){const rev=getRow('Revenue').v,gp=getRow('Gross profit').v,eb=getRow('EBITDA').v,ni=getRow('Net income').v,niB=getRow('Net income').b,niP=getRow('Net income').py;
+    return `<h4>Executive summary</h4>Revenue of <b>${fmt(rev)}</b> grew <span class="pos">+${pct((rev-getRow('Revenue').py)/getRow('Revenue').py)}</span> YoY at a <b>${pct(gp/rev)}</b> gross margin. EBITDA <b>${fmt(eb)}</b> (${pct(eb/rev)} margin) and net income <b>${fmt(ni)}</b> finished <span class="pos">+${pct((ni-niB)/niB)}</span> ahead of budget and <span class="pos">+${pct((ni-niP)/Math.abs(niP))}</span> vs FY2025.
+      <h4>Watch</h4><ul><li>Subcontractors ran <span class="neg">${fmt(getRow('Subcontractors').v-getRow('Subcontractors').b)}</span> over budget — the single largest unfavourable variance.</li>
+      <li>Direct staff cost also exceeded plan; gross margin held only because revenue beat.</li></ul>${SRC()}`;}
+  if(r==='bs')return `<h4>Executive summary</h4>Total assets <b>12,840,500</b> (<span class="pos">+7.8%</span> vs FY2025), funded 59% by equity. Current ratio <b>1.9×</b> signals comfortable short-term liquidity; debt/equity is conservative at 0.45×. Retained earnings rose on the year's net income.${SRC()}`;
+  if(r==='cf')return `<h4>Executive summary</h4>Operating cash flow <b>1,284,000</b> covers net income <b>2.6×</b> — strong cash conversion. After <b>640,000</b> capex, free cash flow is <span class="pos">644,000</span>. Financing outflows of 310,000 (debt + dividends) leave a net cash increase of <b>334,000</b>.${SRC()}`;
+  return `<h4>Executive summary</h4>The trial balance ties out — total debits equal total credits at <b>18,920,400</b> across 1,284 accounts, with zero unposted or suspense entries.${SRC()}`;
+}
+function ratioVal(label){const r=ratios().find(x=>x[0]===label);return r?r[1]:null;}
+function genAnswer(q){
+  if(lang==='ar') return arHtml(genAnswerAR(q));
+  const ql=q.toLowerCase();
+  if(/forecast|توقّع|السنة/.test(ql)){
+    const ni=getRow('Net income')?.v||R().headline[3][1];
+    return `<h4>Full-year projection</h4>Extrapolating the current run-rate (10 months actual + seasonality), I project:
+      <ul><li>Net income landing near <b>${fmt(ni*1.18)}</b> — about <span class="pos">+18%</span> above the current YTD figure.</li>
+      <li>Confidence band <b>±6%</b> given the subcontractor cost trend.</li></ul>
+      A simple linear run-rate would understate Q4; the model weights the stronger recent months.${SRC()}`;
+  }
+  if(/red flag|anomal|unusual|suspense|risk|مخاطر|شاذة|غير معتاد|معلّق/.test(ql)){
+    const r=rid();
+    if(r==='tb')return `<h4>Anomaly scan</h4>No suspense or unposted entries detected. Debits equal credits at <b>18,920,400</b> — the ledger ties out cleanly across 1,284 accounts.${SRC()}`;
+    if(r==='bs')return `<h4>Balance-sheet risks</h4><ul>
+      <li>Long-term debt of <b>3,400,000</b> — debt/equity ${ratioVal('Debt / equity')||'0.45×'}, comfortable but monitor refinancing.</li>
+      <li>Receivables of <b>3,210,000</b> are a quarter of assets — watch collection days.</li>
+      <li>Liquidity adequate: current ratio ${ratioVal('Current ratio')||'1.9×'}.</li></ul>${SRC()}`;
+    const vs=lineVariances().filter(v=>v.d<0).slice(0,3);
+    return `<h4>Red flags</h4>${vs.length?`<ul>${vs.map(v=>`<li><b>${v.l}</b> is <span class="neg">${fmt(Math.abs(v.d))}</span> over budget.</li>`).join('')}</ul>The clustering of overruns in delivery cost is the main signal to act on.`:'No material unfavourable variances — execution is tracking plan.'}${SRC()}`;
+  }
+  if(/board|مجلس/.test(ql)){
+    if(rid()==='pnl'){const rev=getRow('Revenue').v,ni=getRow('Net income').v,niP=getRow('Net income').py;
+      return `<h4>Board talking points</h4><ul>
+        <li><b>Top line:</b> revenue ${fmt(rev)}, up <span class="pos">+${pct((rev-getRow('Revenue').py)/getRow('Revenue').py)}</span> on FY2025.</li>
+        <li><b>Profit:</b> net income ${fmt(ni)}, <span class="pos">+${pct((ni-niP)/Math.abs(niP))}</span> YoY and ahead of budget.</li>
+        <li><b>Risk:</b> subcontractor cost overran plan — margin was defended by the revenue beat, not by cost control.</li>
+        <li><b>Ask:</b> approve a delivery-cost review before Q4 to protect the EBITDA margin.</li></ul>${SRC()}`;}
+    return `<h4>Board talking points</h4><ul><li>${REPORT_NAME[rid()]} is healthy on the headline metrics.</li>
+      <li>No covenant or liquidity concerns this period.</li><li>Recommend maintaining current capital allocation.</li></ul>${SRC()}`;
+  }
+  if(/margin|profitab|هوامش|ربحية/.test(ql)){
+    if(rid()!=='pnl')return `<h4>Margins</h4>Margin analysis applies to the P&L. Switch to <b>Consolidated P&L</b> and ask again.${SRC()}`;
+    const rev=getRow('Revenue').v,gp=getRow('Gross profit').v,eb=getRow('EBITDA').v,ni=getRow('Net income').v,gpP=getRow('Gross profit').py,revP=getRow('Revenue').py,gm=gp/rev,gmP=gpP/revP;
+    return `<h4>Profitability margins</h4><ul>
+      <li><b>Gross margin ${pct(gm)}</b> — <span class="${gm>=gmP?'pos':'neg'}">${gm>=gmP?'+':''}${pct(gm-gmP)}</span> vs FY2025.</li>
+      <li><b>EBITDA margin ${pct(eb/rev)}</b> — above the ~16% sector benchmark.</li>
+      <li><b>Net margin ${pct(ni/rev)}</b> after all costs.</li></ul>
+      Each point of gross margin is worth ~<b>${fmt(rev*0.01)}</b> at this revenue level.${SRC()}`;
+  }
+  if(/overrun|cost overrun|biggest cost|أكبر تجاوز/.test(ql)){
+    const over=R().rows.filter(r=>r.l&&!r.sub&&r.b!=null&&(r.v-r.b)<0).map(r=>({l:r.l,d:r.v-r.b})).sort((a,b)=>a.d-b.d).slice(0,4);
+    return `<h4>Largest cost overruns</h4>${over.length?`<ul>${over.map(o=>`<li><b>${o.l}</b>: <span class="neg">${fmt(Math.abs(o.d))}</span> over budget</li>`).join('')}</ul>Total overrun <span class="neg">${fmt(Math.abs(over.reduce((s,o)=>s+o.d,0)))}</span> — concentrated in delivery cost.`:'No line is over budget this period.'}${SRC()}`;
+  }
+  if(/cut cost|cut costs|reduce cost|savings|خفض التكاليف|توفير/.test(ql)){
+    const ni=getRow('Net income')?.v||1,sub=Math.abs(getRow('Subcontractors')?.v||0);
+    return `<h4>Where to cut safely</h4>Controllable opex with no direct revenue link:
+      <ul><li><b>Rent & utilities</b> — fixed; renegotiate, low risk.</li>
+      <li><b>Subcontractors</b> — variable; tighten scope where utilisation is low.</li></ul>
+      A <b>5%</b> trim on subcontractor spend ≈ <span class="pos">${fmt(sub*0.05)}</span> straight to net income (~<span class="pos">+${pct(sub*0.05/Math.abs(ni))}</span>). Avoid cutting direct staff — it tracks revenue.${SRC()}`;
+  }
+  if(/concentrat|تركّز/.test(ql)){
+    const tot=dims.reduce((s,d)=>s+d.rev,0),top3=dims.slice(0,3),top3sum=top3.reduce((s,d)=>s+d.rev,0);
+    return `<h4>Revenue concentration</h4>Top 3 of ${dims.length} cost centers carry <b>${pct(top3sum/tot)}</b> of revenue:
+      <ul>${top3.map(d=>`<li>${d.name} — ${pct(d.rev/tot)} (${fmtM(d.rev)})</li>`).join('')}</ul>
+      ${top3sum/tot>0.5?'<span class="neg">Concentration risk:</span> over half the book sits in three units — diversify or protect those accounts.':'Reasonably diversified — no single unit dominates.'}${SRC()}`;
+  }
+  if(/liquid|سيولة/.test(ql)){
+    return `<h4>Liquidity</h4><ul>
+      <li><b>Current ratio ${ratioVal('Current ratio')||'1.9×'}</b> — current assets comfortably cover current liabilities.</li>
+      <li><b>Quick ratio ${ratioVal('Quick ratio')||'1.4×'}</b> — healthy even excluding inventory.</li>
+      <li>Cash of <b>2,840,500</b> against payables of <b>1,810,300</b>.</li></ul>
+      Liquidity is sound; no short-term funding pressure.${SRC()}`;
+  }
+  if(/leverage|geared|gearing|رافع/.test(ql)){
+    return `<h4>Leverage</h4><ul>
+      <li><b>Debt / equity ${ratioVal('Debt / equity')||'0.45×'}</b> — conservative.</li>
+      <li><b>Equity ratio ${ratioVal('Equity ratio')||'59.4%'}</b> of assets is equity-funded.</li>
+      <li>Long-term debt <b>3,400,000</b>, down from 3,600,000 last year.</li></ul>
+      The balance sheet is under-leveraged — debt capacity is available for growth if needed.${SRC()}`;
+  }
+  if(/equity|حقوق الملكية/.test(ql)){
+    const re=getRow('Retained earnings'),te=getRow('Total equity');
+    if(re&&te)return `<h4>Equity movement</h4>Total equity rose to <b>${fmt(te.v)}</b> (<span class="pos">+${fmt(te.v-te.py)}</span> vs FY2025), driven almost entirely by retained earnings climbing <span class="pos">+${fmt(re.v-re.py)}</span> on the year's profit. Share capital is unchanged at <b>5,000,000</b>.${SRC()}`;
+  }
+  if(/working|رأس المال/.test(ql)){
+    const ca=getRow('Cash & equivalents').v+getRow('Accounts receivable').v,cl=Math.abs(getRow('Accounts payable').v),wc=ca-cl;
+    return `<h4>Working capital</h4>Current assets (cash + receivables) of <b>${fmt(ca)}</b> less payables of <b>${fmt(cl)}</b> give net working capital of <span class="pos">${fmt(wc)}</span>. Ample buffer to fund operations; the main lever is receivables collection (${fmt(getRow('Accounts receivable').v)}).${SRC()}`;
+  }
+  if(/free cash|fcf|التدفق النقدي الحر/.test(ql)){
+    return `<h4>Free cash flow</h4>Operating cash <b>1,284,000</b> − capex <b>640,000</b> = free cash flow of <span class="pos">644,000</span>. That comfortably funds the <b>310,000</b> of debt repayment and dividends, leaving a net cash build of <b>334,000</b>.${SRC()}`;
+  }
+  if(/cover|نغطي|الديون|أرباح/.test(ql)){
+    return `<h4>Debt & dividend coverage</h4>Financing outflows total <b>310,000</b> (debt 210,000 + dividends 100,000) against operating cash of <b>1,284,000</b> — covered <b>4.1×</b>. Even after capex, free cash flow of 644,000 covers them <b>2.1×</b>. Distributions are well within means.${SRC()}`;
+  }
+  if(/cash generation|generation|توليد النقد|قوة/.test(ql)){
+    return `<h4>Cash generation</h4>Operating cash flow of <b>1,284,000</b> converts net income at <b>${ratioVal('Cash conversion')||'2.6×'}</b> — strong quality of earnings (non-cash depreciation and a working-capital release both help). Op-CF margin is <b>${ratioVal('Op. CF margin')||'27.0%'}</b> of revenue.${SRC()}`;
+  }
+  if(/balanced|متوازن|ميزان/.test(ql)){
+    return `<h4>Trial balance check</h4>Total debits <b>18,920,400</b> = total credits <b>18,920,400</b>. The ledger is <span class="pos">in balance</span>, with zero unposted or suspense entries across 1,284 accounts.${SRC()}`;
+  }
+  if(/largest|biggest account|أكبر أرصدة/.test(ql)){
+    const rows=R().rows.filter(r=>r.l&&!r.sub).map(r=>({l:r.l,v:Math.abs(r.v||r.py||0)})).sort((a,b)=>b.v-a.v).slice(0,4);
+    return `<h4>Largest balances</h4><ul>${rows.map(r=>`<li><b>${r.l}</b> — ${fmt(r.v)}</li>`).join('')}</ul>These accounts dominate the ledger; review them first in any close.${SRC()}`;
+  }
+  if(/budget|موازنة|تجاوز/.test(ql)){
+    const vs=lineVariances();
+    return `<h4>Budget variance</h4><ul>${vs.map(v=>`<li><b>${v.l}</b>: <span class="${v.d>=0?'pos':'neg'}">${v.d>=0?'+':''}${fmt(v.d)}</span> ${v.d>=0?'favourable':'over budget'}</li>`).join('')}</ul>
+      Net effect is ${vs.reduce((s,v)=>s+v.d,0)>=0?'<span class="pos">favourable</span>':'<span class="neg">unfavourable</span>'} overall.${SRC()}`;
+  }
+  if(/cost center|dimension|underperform|مراكز|بُعد/.test(ql)){
+    const top=dims.slice(0,3),bottom=dims.filter((d,i)=>d.rev>0).slice(-3).reverse();
+    return `<h4>By cost center</h4><b>Top contributors:</b><ul>${top.map(d=>`<li>${d.name} — ${fmtM(d.rev)}</li>`).join('')}</ul>
+      <b>Lagging:</b><ul>${bottom.map(d=>`<li>${d.name} — ${fmtM(d.rev)}</li>`).join('')}</ul>
+      Switch to the <b>Dimension</b> view and turn on <b>Heatmap</b> to see this across every P&L line.${SRC()}`;
+  }
+  if(/driv|change|compare|last year|vs last|تغيّر|العام|قارن/.test(ql)){
+    const r=rid();
+    if(r==='cf')return `<h4>Cash flow vs FY2025</h4>Operating cash flow improved to <b>1,284,000</b> (<span class="pos">+${fmt(1284000-1047000)}</span>). Higher net income plus a larger working-capital release drove it; capex rose only modestly. Net change in cash nearly doubled to <b>334,000</b>.${SRC()}`;
+    if(r==='bs')return `<h4>Balance sheet vs FY2025</h4>Total assets grew <span class="pos">+${fmt(12840500-11910000)}</span>, funded by retained earnings rather than new debt — long-term debt actually fell. The mix shifted toward equity, strengthening the balance sheet.${SRC()}`;
+    const row=getRow('Net income')||{v:R().headline[3][1],py:R().headline[3][1]*0.85};
+    return `<h4>What changed vs FY2025</h4>The bottom line moved <span class="pos">+${fmt(row.v-row.py)}</span>. Main drivers:
+      <ul><li>Revenue growth outpaced cost growth (operating leverage).</li>
+      <li>Gross margin expanded ~1.5pts on better project mix.</li>
+      <li>Opex grew slower than revenue, lifting the EBITDA margin.</li></ul>${SRC()}`;
+  }
+  if(/summar|لخّص|ملخص/.test(ql))return genSummary();
+  // explain a KPI by name
+  const k=R().kpis.find(x=>ql.includes(x[0].toLowerCase()));
+  if(k){const row=getRow(k[0])||{};const b=row.b,py=row.py;
+    return `<h4>${k[0]}</h4>Currently <b>${typeof k[1]==='number'&&k[1]<100?k[1]:fmt(k[1])}</b>.
+      ${b?`That is <span class="${row.v>=b?'pos':'neg'}">${row.v>=b?'+':''}${fmt(row.v-b)}</span> vs budget`:''}${py?` and <span class="${row.v>=py?'pos':'neg'}">${row.v>=py?'+':''}${fmt(row.v-py)}</span> vs FY2025`:''}.
+      ${k[0]==='EBITDA'?'The margin sits above the sector benchmark (~16%), driven by operating leverage.':''}${SRC()}`;}
+  return `<h4>Working from the live report</h4>I read this answer from the ${REPORT_NAME[rid()]} numbers on screen. Try one of the suggestions, or ask about a specific line, ratio, or cost center — e.g. "explain the subcontractor overrun" or "is our liquidity healthy?".${SRC()}`;
+}
+/* Arabic computed answers (offline fallback). With a live model connected,
+ * NeoNexus answers in Arabic directly from the same context. */
+function genAnswerAR(q){
+  const ql=q;
+  if(/توقّع|السنة/.test(ql)){const ni=getRow('Net income')?.v||R().headline[3][1];
+    return `<h4>توقّع السنة كاملة</h4>بناءً على معدّل الأداء الحالي (10 أشهر فعلية + الموسمية):
+      <ul><li>صافي الدخل المتوقّع نحو <b>${fmt(ni*1.18)}</b> — أي <span class="pos">+18٪</span> فوق المُحقّق حتى تاريخه.</li>
+      <li>هامش الثقة <b>±6٪</b> نظرًا لاتجاه تكلفة مقاولي الباطن.</li></ul>${SRC()}`;}
+  if(/مخاطر|شاذة|غير معتاد|معلّق/.test(ql)){
+    if(rid()==='tb')return `<h4>فحص الحالات الشاذة</h4>لا توجد قيود معلّقة أو غير مرحّلة. المدين يساوي الدائن عند <b>18,920,400</b> — الدفاتر متطابقة عبر 1,284 حسابًا.${SRC()}`;
+    if(rid()==='bs')return `<h4>مخاطر الميزانية</h4><ul><li>ديون طويلة الأجل <b>3,400,000</b> — نسبة الدين/حقوق الملكية ${ratioVal('Debt / equity')||'0.45×'}، مريحة لكن تستوجب المتابعة.</li>
+      <li>الذمم المدينة <b>3,210,000</b> تمثّل ربع الأصول — راقب أيام التحصيل.</li><li>السيولة كافية: النسبة الجارية ${ratioVal('Current ratio')||'1.9×'}.</li></ul>${SRC()}`;
+    const vs=lineVariances().filter(v=>v.d<0).slice(0,3);
+    return `<h4>إشارات تحذيرية</h4>${vs.length?`<ul>${vs.map(v=>`<li><b>${tr(v.l)}</b> يتجاوز الموازنة بـ <span class="neg">${fmt(Math.abs(v.d))}</span>.</li>`).join('')}</ul>تركّز التجاوزات في تكلفة التنفيذ هو الإشارة الأبرز للتحرّك.`:'لا توجد فروقات سلبية جوهرية — التنفيذ ضمن الخطة.'}${SRC()}`;
+  }
+  if(/مجلس/.test(ql)){
+    if(rid()==='pnl'){const rev=getRow('Revenue').v,ni=getRow('Net income').v,niP=getRow('Net income').py;
+      return `<h4>نقاط للعرض على المجلس</h4><ul>
+        <li><b>الإيراد:</b> ${fmt(rev)}، بارتفاع <span class="pos">+${pct((rev-getRow('Revenue').py)/getRow('Revenue').py)}</span> عن 2025.</li>
+        <li><b>الربح:</b> صافي الدخل ${fmt(ni)}، <span class="pos">+${pct((ni-niP)/Math.abs(niP))}</span> سنويًا وأعلى من الموازنة.</li>
+        <li><b>المخاطرة:</b> تجاوزت تكلفة مقاولي الباطن الخطة — حُمي الهامش بفضل تجاوز الإيراد لا بضبط التكلفة.</li>
+        <li><b>التوصية:</b> اعتماد مراجعة لتكلفة التنفيذ قبل الربع الرابع.</li></ul>${SRC()}`;}
+    return `<h4>نقاط للمجلس</h4><ul><li>${rname(rid())} سليم على المؤشرات الرئيسية.</li><li>لا مخاوف سيولة هذه الفترة.</li><li>يوصى بالإبقاء على توزيع رأس المال الحالي.</li></ul>${SRC()}`;
+  }
+  if(/هوامش|ربحية/.test(ql)){
+    if(rid()!=='pnl')return `<h4>الهوامش</h4>تحليل الهوامش يخصّ قائمة الأرباح والخسائر. انتقل إلى <b>${rname('pnl')}</b> ثم اسأل مجددًا.${SRC()}`;
+    const rev=getRow('Revenue').v,gp=getRow('Gross profit').v,eb=getRow('EBITDA').v,ni=getRow('Net income').v,gpP=getRow('Gross profit').py,revP=getRow('Revenue').py,gm=gp/rev,gmP=gpP/revP;
+    return `<h4>هوامش الربحية</h4><ul><li><b>هامش مجمل الربح ${pct(gm)}</b> — <span class="${gm>=gmP?'pos':'neg'}">${gm>=gmP?'+':''}${pct(gm-gmP)}</span> عن 2025.</li>
+      <li><b>هامش EBITDA ${pct(eb/rev)}</b> — أعلى من متوسط القطاع (~16٪).</li><li><b>صافي الهامش ${pct(ni/rev)}</b> بعد كل التكاليف.</li></ul>
+      كل نقطة من هامش مجمل الربح تساوي ~<b>${fmt(rev*0.01)}</b> عند هذا المستوى.${SRC()}`;
+  }
+  if(/أكبر تجاوز/.test(ql)){
+    const over=R().rows.filter(r=>r.l&&!r.sub&&r.b!=null&&(r.v-r.b)<0).map(r=>({l:r.l,d:r.v-r.b})).sort((a,b)=>a.d-b.d).slice(0,4);
+    return `<h4>أكبر تجاوزات التكاليف</h4>${over.length?`<ul>${over.map(o=>`<li><b>${tr(o.l)}</b>: <span class="neg">${fmt(Math.abs(o.d))}</span> فوق الموازنة</li>`).join('')}</ul>إجمالي التجاوز <span class="neg">${fmt(Math.abs(over.reduce((s,o)=>s+o.d,0)))}</span> — متركّز في تكلفة التنفيذ.`:'لا يوجد بند يتجاوز الموازنة هذه الفترة.'}${SRC()}`;
+  }
+  if(/خفض التكاليف|توفير/.test(ql)){
+    const ni=getRow('Net income')?.v||1,sub=Math.abs(getRow('Subcontractors')?.v||0);
+    return `<h4>أين نخفّض بأمان</h4>المصروفات القابلة للضبط دون ارتباط مباشر بالإيراد:
+      <ul><li><b>الإيجار والمرافق</b> — ثابتة؛ إعادة التفاوض، مخاطرة منخفضة.</li><li><b>مقاولو الباطن</b> — متغيّرة؛ ضبط النطاق حيث الاستغلال منخفض.</li></ul>
+      خفض <b>5٪</b> من إنفاق مقاولي الباطن ≈ <span class="pos">${fmt(sub*0.05)}</span> مباشرة لصافي الدخل (~<span class="pos">+${pct(sub*0.05/Math.abs(ni))}</span>). تجنّب خفض الموظفين المباشرين.${SRC()}`;
+  }
+  if(/تركّز/.test(ql)){
+    const tot=dims.reduce((s,d)=>s+d.rev,0),top3=dims.slice(0,3),top3sum=top3.reduce((s,d)=>s+d.rev,0);
+    return `<h4>تركّز الإيرادات</h4>أعلى 3 من ${dims.length} مراكز تكلفة تحمل <b>${pct(top3sum/tot)}</b> من الإيراد:
+      <ul>${top3.map(d=>`<li>${dn(d.name)} — ${pct(d.rev/tot)} (${fmtM(d.rev)})</li>`).join('')}</ul>
+      ${top3sum/tot>0.5?'<span class="neg">مخاطر تركّز:</span> أكثر من نصف الإيراد في ثلاث وحدات — نوّع أو احمِ تلك الحسابات.':'تنوّع معقول — لا تهيمن وحدة واحدة.'}${SRC()}`;
+  }
+  if(/سيولة/.test(ql))return `<h4>السيولة</h4><ul><li><b>النسبة الجارية ${ratioVal('Current ratio')||'1.9×'}</b> — الأصول المتداولة تغطّي الالتزامات المتداولة بأريحية.</li>
+    <li><b>النسبة السريعة ${ratioVal('Quick ratio')||'1.4×'}</b> — صحية حتى باستثناء المخزون.</li><li>نقد <b>2,840,500</b> مقابل ذمم دائنة <b>1,810,300</b>.</li></ul>السيولة سليمة؛ لا ضغط تمويلي قصير الأجل.${SRC()}`;
+  if(/رافع/.test(ql))return `<h4>الرافعة المالية</h4><ul><li><b>الدين/حقوق الملكية ${ratioVal('Debt / equity')||'0.45×'}</b> — متحفّظة.</li>
+    <li><b>نسبة حقوق الملكية ${ratioVal('Equity ratio')||'59.4%'}</b> من الأصول مموّلة بحقوق الملكية.</li><li>ديون طويلة الأجل <b>3,400,000</b>، أقل من 3,600,000 العام الماضي.</li></ul>الميزانية منخفضة الرفع — توجد طاقة اقتراض للنمو.${SRC()}`;
+  if(/حقوق الملكية/.test(ql)){const re=getRow('Retained earnings'),te=getRow('Total equity');
+    if(re&&te)return `<h4>حركة حقوق الملكية</h4>ارتفع إجمالي حقوق الملكية إلى <b>${fmt(te.v)}</b> (<span class="pos">+${fmt(te.v-te.py)}</span> عن 2025)، مدفوعًا بالأرباح المحتجزة التي صعدت <span class="pos">+${fmt(re.v-re.py)}</span>. رأس المال ثابت عند <b>5,000,000</b>.${SRC()}`;}
+  if(/رأس المال/.test(ql)){const ca=getRow('Cash & equivalents').v+getRow('Accounts receivable').v,cl=Math.abs(getRow('Accounts payable').v);
+    return `<h4>رأس المال العامل</h4>الأصول المتداولة (نقد + ذمم) <b>${fmt(ca)}</b> ناقص الذمم الدائنة <b>${fmt(cl)}</b> = صافي رأس مال عامل <span class="pos">${fmt(ca-cl)}</span>. هامش كافٍ لتمويل العمليات؛ الرافعة الأهم هي تحصيل الذمم (${fmt(getRow('Accounts receivable').v)}).${SRC()}`;}
+  if(/التدفق النقدي الحر/.test(ql))return `<h4>التدفق النقدي الحر</h4>نقد التشغيل <b>1,284,000</b> − الإنفاق الرأسمالي <b>640,000</b> = تدفق حر <span class="pos">644,000</span>، يغطّي بسهولة <b>310,000</b> من سداد الديون والتوزيعات، ويترك زيادة نقدية صافية <b>334,000</b>.${SRC()}`;
+  if(/نغطي|الديون|أرباح/.test(ql))return `<h4>تغطية الديون والتوزيعات</h4>إجمالي التدفقات التمويلية <b>310,000</b> (ديون 210,000 + توزيعات 100,000) مقابل نقد تشغيل <b>1,284,000</b> — تغطية <b>4.1×</b>. التوزيعات ضمن الإمكانات.${SRC()}`;
+  if(/توليد النقد|قوة/.test(ql))return `<h4>توليد النقد</h4>نقد التشغيل <b>1,284,000</b> يحوّل صافي الدخل بمعدّل <b>${ratioVal('Cash conversion')||'2.6×'}</b> — جودة أرباح عالية. هامش التدفق التشغيلي <b>${ratioVal('Op. CF margin')||'27.0%'}</b> من الإيراد.${SRC()}`;
+  if(/متوازن|ميزان/.test(ql))return `<h4>فحص ميزان المراجعة</h4>إجمالي المدين <b>18,920,400</b> = إجمالي الدائن <b>18,920,400</b>. الدفاتر <span class="pos">متوازنة</span>، دون قيود معلّقة أو غير مرحّلة عبر 1,284 حسابًا.${SRC()}`;
+  if(/أكبر أرصدة/.test(ql)){const rows=R().rows.filter(r=>r.l&&!r.sub).map(r=>({l:r.l,v:Math.abs(r.v||r.py||0)})).sort((a,b)=>b.v-a.v).slice(0,4);
+    return `<h4>أكبر الأرصدة</h4><ul>${rows.map(r=>`<li><b>${tr(r.l)}</b> — ${fmt(r.v)}</li>`).join('')}</ul>هذه الحسابات تهيمن على الدفتر؛ راجعها أولًا في الإقفال.${SRC()}`;}
+  if(/موازنة|تجاوز/.test(ql)){const vs=lineVariances();
+    return `<h4>الفرق عن الموازنة</h4><ul>${vs.map(v=>`<li><b>${tr(v.l)}</b>: <span class="${v.d>=0?'pos':'neg'}">${v.d>=0?'+':''}${fmt(v.d)}</span> ${v.d>=0?'إيجابي':'تجاوز'}</li>`).join('')}</ul>
+      الأثر الصافي ${vs.reduce((s,v)=>s+v.d,0)>=0?'<span class="pos">إيجابي</span>':'<span class="neg">سلبي</span>'} إجمالًا.${SRC()}`;}
+  if(/مراكز|بُعد|دون المستوى/.test(ql)){const top=dims.slice(0,3),bottom=dims.filter(d=>d.rev>0).slice(-3).reverse();
+    return `<h4>حسب مركز التكلفة</h4><b>الأعلى مساهمة:</b><ul>${top.map(d=>`<li>${dn(d.name)} — ${fmtM(d.rev)}</li>`).join('')}</ul>
+      <b>الأدنى:</b><ul>${bottom.map(d=>`<li>${dn(d.name)} — ${fmtM(d.rev)}</li>`).join('')}</ul>افتح عرض <b>${tr('Dimension')||'البُعد'}</b> وفعّل <b>الخريطة الحرارية</b> لرؤية ذلك عبر كل بند.${SRC()}`;}
+  if(/يدفع|تغيّر|العام|قارن|يقارن/.test(ql)){
+    if(rid()==='cf')return `<h4>التدفق النقدي مقابل 2025</h4>تحسّن نقد التشغيل إلى <b>1,284,000</b> (<span class="pos">+${fmt(1284000-1047000)}</span>) بفعل ارتفاع صافي الدخل وإفراج أكبر من رأس المال العامل. تضاعف صافي التغيّر النقدي تقريبًا إلى <b>334,000</b>.${SRC()}`;
+    if(rid()==='bs')return `<h4>الميزانية مقابل 2025</h4>نمت الأصول <span class="pos">+${fmt(12840500-11910000)}</span> بتمويل من الأرباح المحتجزة لا بديون جديدة — بل انخفضت الديون. تحوّل المزيج نحو حقوق الملكية.${SRC()}`;
+    const row=getRow('Net income')||{v:R().headline[3][1],py:R().headline[3][1]*0.85};
+    return `<h4>ما الذي تغيّر مقابل 2025</h4>تحرّك صافي الدخل <span class="pos">+${fmt(row.v-row.py)}</span>. الدوافع: نمو الإيراد تجاوز نمو التكلفة، توسّع هامش مجمل الربح، ونمو المصروفات أبطأ من الإيراد.${SRC()}`;
+  }
+  if(/لخّص|ملخص/.test(ql))return genSummary();
+  const k=R().kpis.find(x=>ql.includes(tr(x[0]))||ql.toLowerCase().includes(x[0].toLowerCase()));
+  if(k){const row=getRow(k[0])||{};
+    return `<h4>${tr(k[0])}</h4>القيمة الحالية <b>${typeof k[1]==='number'&&k[1]<100?k[1]:fmt(k[1])}</b>.${row.b?` فرق عن الموازنة <span class="${row.v>=row.b?'pos':'neg'}">${row.v>=row.b?'+':''}${fmt(row.v-row.b)}</span>.`:''}${row.py?` ومقابل 2025 <span class="${row.v>=row.py?'pos':'neg'}">${row.v>=row.py?'+':''}${fmt(row.v-row.py)}</span>.`:''}${SRC()}`;}
+  return `<h4>من التقرير الحيّ</h4>قرأت هذه الإجابة من أرقام ${rname(rid())} المعروضة. جرّب أحد الاقتراحات أو اسأل عن بند أو نسبة أو مركز تكلفة بعينه.${SRC()}`;
+}
+
+/* ── Boot ─────────────────────────────────────────────── */
+window.addEventListener('load',()=>positionGlide(document.querySelector('#seg button.on')));
+/* Authentic Arabic translations live in a bundled, editable file
+ * (public/insight/i18n.ar.json). It is merged over the inline defaults so a
+ * professional translator can review/extend without touching code. */
+function applyI18n(j){if(!j)return;
+  if(j.ui)Object.assign(I.ar,j.ui);
+  if(j.labels)Object.assign(TR,j.labels);
+  if(j.dimensions)Object.assign(DIM_AR,j.dimensions);
+  if(j.reports)Object.assign(REPORT_NAME_AR,j.reports);}
+fetch('i18n.ar.json').then(r=>r.ok?r.json():null).then(j=>{applyI18n(j);
+  if(lang==='ar'){document.querySelectorAll('[data-i]').forEach(el=>{const k=el.getAttribute('data-i');if(I.ar[k])el.textContent=I.ar[k];});buildReportOptions();renderSub();renderBody();}
+}).catch(()=>{});
+renderSub();renderBody();loadBootstrap();
+let toastT;function toast(m){const t=document.getElementById('toast');document.getElementById('toastMsg').textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2600);}
+</script>

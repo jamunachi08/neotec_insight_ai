@@ -1,0 +1,10 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+recursive-include neotec_insight_ai *.css
+recursive-include neotec_insight_ai *.csv
+recursive-include neotec_insight_ai *.html
+recursive-include neotec_insight_ai *.js
+recursive-include neotec_insight_ai *.json
+recursive-include neotec_insight_ai *.svg
+recursive-include neotec_insight_ai *.py
