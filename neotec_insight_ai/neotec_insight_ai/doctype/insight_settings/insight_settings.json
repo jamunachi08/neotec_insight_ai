@@ -1,0 +1,33 @@
+{
+ "actions": [],
+ "creation": "2026-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "ai_section", "ai_enabled", "ai_endpoint", "ai_model", "ai_api_key",
+  "ai_col", "ai_system_prompt", "loc_section", "language_default"
+ ],
+ "fields": [
+  {"fieldname": "ai_section", "fieldtype": "Section Break", "label": "AI Engine (NeoNexus / OpenAI-compatible)"},
+  {"fieldname": "ai_enabled", "fieldtype": "Check", "label": "Enable AI assistant", "default": "0"},
+  {"fieldname": "ai_endpoint", "fieldtype": "Data", "label": "AI Endpoint", "default": "http://host.docker.internal:11434/v1", "description": "OpenAI-compatible base URL ending in /v1 (Ollama, LM Studio, NeoNexus, OpenAI, etc.)"},
+  {"fieldname": "ai_model", "fieldtype": "Data", "label": "AI Model", "default": "llama3.3"},
+  {"fieldname": "ai_api_key", "fieldtype": "Password", "label": "API Key (optional)"},
+  {"fieldname": "ai_col", "fieldtype": "Column Break"},
+  {"fieldname": "ai_system_prompt", "fieldtype": "Small Text", "label": "System Prompt", "description": "Leave blank to use the built-in financial-analyst prompt."},
+  {"fieldname": "loc_section", "fieldtype": "Section Break", "label": "Localization"},
+  {"fieldname": "language_default", "fieldtype": "Select", "label": "Default Language", "options": "en\nar", "default": "en"}
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Neotec Insight AI",
+ "name": "Insight Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1, "email": 1, "print": 1, "share": 1}
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

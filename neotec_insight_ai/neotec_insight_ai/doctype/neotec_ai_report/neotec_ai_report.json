@@ -1,0 +1,131 @@
+{
+ "actions": [],
+ "autoname": "field:slug",
+ "creation": "2026-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "report_name",
+  "report_name_ar",
+  "slug",
+  "report_type",
+  "is_active",
+  "views_section",
+  "view_period",
+  "view_dimension",
+  "views_col",
+  "view_years",
+  "view_combo",
+  "dims_section",
+  "dimensions"
+ ],
+ "fields": [
+  {
+   "fieldname": "report_name",
+   "fieldtype": "Data",
+   "label": "Report Name",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "report_name_ar",
+   "fieldtype": "Data",
+   "label": "Report Name (Arabic)",
+   "translatable": 1,
+   "description": "Shown when the cockpit language is Arabic."
+  },
+  {
+   "fieldname": "slug",
+   "fieldtype": "Data",
+   "label": "Slug",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "description": "Stable identifier used in URLs and API calls."
+  },
+  {
+   "fieldname": "report_type",
+   "fieldtype": "Select",
+   "label": "Report Type",
+   "options": "pnl\nbalance_sheet\ntrial_balance\ncash_flow",
+   "default": "pnl",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Active",
+   "default": "1"
+  },
+  {
+   "fieldname": "views_section",
+   "fieldtype": "Section Break",
+   "label": "Available Views (View By)",
+   "description": "Which VIEW BY modes this report exposes. Applies to present and future reports."
+  },
+  {
+   "fieldname": "view_period",
+   "fieldtype": "Check",
+   "label": "Period",
+   "default": "1"
+  },
+  {
+   "fieldname": "view_dimension",
+   "fieldtype": "Check",
+   "label": "Dimension",
+   "default": "1"
+  },
+  {
+   "fieldname": "views_col",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "view_years",
+   "fieldtype": "Check",
+   "label": "Years",
+   "default": "1"
+  },
+  {
+   "fieldname": "view_combo",
+   "fieldtype": "Check",
+   "label": "Combo",
+   "default": "1"
+  },
+  {
+   "fieldname": "dims_section",
+   "fieldtype": "Section Break",
+   "label": "Exposed Dimensions (provision)",
+   "description": "Which dimensions this report can pivot and filter by. Default: all enabled."
+  },
+  {
+   "fieldname": "dimensions",
+   "fieldtype": "Table",
+   "label": "Dimensions",
+   "options": "Neotec AI Report Dimension"
+  }
+ ],
+ "links": [],
+ "modified": "2026-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Neotec Insight AI",
+ "name": "Neotec AI Report",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "share": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "report_name",
+ "track_changes": 1
+}
