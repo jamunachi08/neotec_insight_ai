@@ -1,0 +1,1 @@
+# All runtime dependencies (requests) ship with Frappe. Nothing extra required.

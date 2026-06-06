@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neotec Insight AI</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --bg:#f4f2ee; --surface:#fffdfa; --surface-2:#f0ede7; --border:#e6e1d8; --border-strong:#d8d2c6;
+    --text:#23211d; --text-muted:#6b665c; --text-faint:#9a948a; --accent:#5b4fc4; --accent-bg:#efedfb;
+    --info:#185fa5; --r-md:8px; --r-lg:12px; --sans:'Inter',-apple-system,system-ui,sans-serif;
+    --serif:'Newsreader',Georgia,serif; --pos:#1f7a52; --neg:#b3402f;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;font-family:var(--sans);color:var(--text);background:var(--bg);display:flex;flex-direction:column;overflow:hidden;}
+  body.rtl{direction:rtl;}
+  /* top bar */
+  .topbar{height:56px;flex:0 0 auto;display:flex;align-items:center;gap:14px;padding:0 18px;background:var(--surface);border-bottom:.5px solid var(--border);}
+  .brand{display:flex;align-items:center;gap:11px;}
+  .logo{width:34px;height:34px;border-radius:9px;background:#1c1a17;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;}
+  .brand .sup{font-size:9px;letter-spacing:.22em;color:var(--text-faint);font-weight:600;}
+  .brand .ttl{font-family:var(--serif),serif;font-size:19px;font-weight:600;line-height:1.05;}
+  .brand .ttl .v{font-size:11px;color:var(--accent);vertical-align:super;font-family:var(--sans);font-weight:700;}
+  .spacer{flex:1;}
+  .ghost{border:.5px solid var(--border-strong);background:var(--surface);font:inherit;font-size:12px;font-weight:600;color:var(--text);padding:7px 13px;border-radius:var(--r-md);cursor:pointer;}
+  .ghost:hover{border-color:var(--text-muted);}
+  .ai-open{border:0;background:var(--accent);color:#fff;font:inherit;font-size:12.5px;font-weight:700;padding:8px 15px;border-radius:var(--r-md);cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 1px 3px rgba(91,79,196,.3);}
+  .ai-open:hover{filter:brightness(1.05);}
+  /* stage / embed */
+  .stage{flex:1;position:relative;min-height:0;}
+  iframe#frame{width:100%;height:100%;border:0;display:block;background:var(--bg);}
+  .fallback{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 28px;color:var(--text-muted);}
+  .fallback .ic{font-size:34px;opacity:.5;}
+  .fallback h2{font-family:var(--serif),serif;font-weight:500;font-size:22px;color:var(--text);margin:14px 0 6px;}
+  .fallback p{font-size:13px;line-height:1.6;max-width:460px;margin:0 0 16px;}
+  .fallback a{color:var(--info);font-weight:600;text-decoration:none;}
+  /* AI panel */
+  .ai-scrim{position:fixed;inset:0;background:rgba(20,18,15,.28);opacity:0;pointer-events:none;transition:.2s;z-index:40;}
+  .ai-scrim.open{opacity:1;pointer-events:auto;}
+  .ai-panel{position:fixed;top:0;right:0;height:100%;width:430px;max-width:92vw;background:var(--surface);border-left:.5px solid var(--border);
+    box-shadow:-12px 0 40px rgba(0,0,0,.1);transform:translateX(100%);transition:transform .24s cubic-bezier(.4,0,.2,1);z-index:50;display:flex;flex-direction:column;}
+  body.rtl .ai-panel{right:auto;left:0;transform:translateX(-100%);border-left:0;border-right:.5px solid var(--border);box-shadow:12px 0 40px rgba(0,0,0,.1);}
+  .ai-panel.open{transform:translateX(0);}
+  .ai-h{padding:15px 17px;border-bottom:.5px solid var(--border);}
+  .ai-h .row1{display:flex;align-items:center;gap:10px;}
+  .ai-h .badge{width:28px;height:28px;border-radius:8px;background:var(--accent-bg);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .ai-h .ttl{font-weight:700;font-size:15px;flex:1;}
+  .ai-h .x{cursor:pointer;color:var(--text-faint);font-size:20px;line-height:1;padding:4px;}
+  .ai-h .sub{font-size:11px;color:var(--text-faint);margin-top:7px;display:flex;align-items:center;gap:6px;}
+  .ai-h .dot{width:7px;height:7px;border-radius:50%;background:var(--pos);}
+  .ai-h .dot.off{background:var(--text-faint);}
+  .ai-ctrls{padding:11px 17px;border-bottom:.5px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .ai-ctrls label{font-size:10px;font-weight:600;color:var(--text-faint);letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:3px;}
+  .ai-ctrls .full{grid-column:1 / -1;}
+  .ai-ctrls select,.ai-ctrls input{width:100%;height:30px;border:.5px solid var(--border-strong);background:var(--surface);border-radius:7px;font:inherit;font-size:12px;color:var(--text);padding:0 8px;}
+  .ai-body{flex:1;overflow:auto;padding:16px 17px;display:flex;flex-direction:column;gap:13px;}
+  .msg{font-size:13px;line-height:1.55;}
+  .msg.ai{color:var(--text);} .msg.me{align-self:flex-end;background:var(--accent);color:#fff;padding:8px 12px;border-radius:12px 12px 3px 12px;max-width:85%;}
+  .msg.ai h4{font-size:13px;margin:0 0 5px;font-weight:700;}
+  .msg.ai .src{margin-top:9px;font-size:10.5px;color:var(--text-faint);border-top:.5px solid var(--border);padding-top:6px;}
+  .msg.ai .pos{color:var(--pos);font-weight:600;} .msg.ai .neg{color:var(--neg);font-weight:600;}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{border:.5px solid var(--border-strong);background:var(--surface);font:inherit;font-size:11.5px;color:var(--text);padding:6px 10px;border-radius:14px;cursor:pointer;}
+  .chip:hover{border-color:var(--accent);color:var(--accent);}
+  .typing{display:inline-flex;gap:3px;} .typing i{width:5px;height:5px;border-radius:50%;background:var(--text-faint);animation:b 1s infinite;}
+  .typing i:nth-child(2){animation-delay:.15s;} .typing i:nth-child(3){animation-delay:.3s;}
+  @keyframes b{0%,60%,100%{opacity:.3;}30%{opacity:1;}}
+  .ai-foot{padding:11px 14px;border-top:.5px solid var(--border);}
+  .ai-input{display:flex;gap:8px;align-items:flex-end;background:var(--surface-2);border:.5px solid var(--border);border-radius:11px;padding:7px 8px 7px 12px;}
+  .ai-input textarea{flex:1;border:0;background:transparent;resize:none;font:inherit;font-size:13px;color:var(--text);max-height:96px;outline:0;}
+  .ai-input button{border:0;background:var(--accent);color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;flex:0 0 auto;}
+  .ai-input button:disabled{opacity:.4;cursor:default;}
+  .ai-foot .note{font-size:10px;color:var(--text-faint);text-align:center;margin-top:7px;}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><div class="logo">N</div>
+      <div><div class="sup">NEOTEC</div><div class="ttl">Insight <span class="v">AI</span></div></div></div>
+    <div class="spacer"></div>
+    <button class="ghost" id="langBtn" onclick="toggleLang()">العربية</button>
+    <button class="ai-open" onclick="openAI()">✦ <span data-i="askai">Ask Neotec AI</span></button>
+  </div>
+
+  <div class="stage">
+    <iframe id="frame" title="Neotec Insight"></iframe>
+    <div class="fallback" id="fallback">
+      <div class="ic">▦</div>
+      <h2 data-i="fb_title">Reports load from Neotec Insight</h2>
+      <p data-i="fb_msg">The report views, authoring (Rows · Account map · Budget · Equity) and live data come from the main Neotec Insight app. Open it directly if the embed is blocked.</p>
+      <a id="fbLink" href="/insight" target="_blank" data-i="fb_open">Open Neotec Insight ↗</a>
+    </div>
+  </div>
+
+  <div class="ai-scrim" id="aiScrim" onclick="closeAI()"></div>
+  <aside class="ai-panel" id="aiPanel">
+    <div class="ai-h">
+      <div class="row1"><div class="badge">✦</div><div class="ttl">Neotec AI</div><div class="x" onclick="closeAI()">×</div></div>
+      <div class="sub"><span class="dot off" id="aiDot"></span> <span id="aiSub" data-i="ai_off">NeoNexus not configured — set it in Insight Settings</span></div>
+    </div>
+    <div class="ai-ctrls">
+      <div class="full"><label data-i="report">Report</label><select id="aiReport"></select></div>
+      <div><label data-i="fromd">From date</label><input type="date" id="aiFrom"></div>
+      <div><label data-i="tod">To date</label><input type="date" id="aiTo"></div>
+    </div>
+    <div class="ai-body" id="aiBody"></div>
+    <div class="ai-foot">
+      <div class="ai-input">
+        <textarea id="aiInput" rows="1" data-i-ph="aiph" placeholder="Ask about this report…"
+          oninput="grow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"></textarea>
+        <button id="aiSend" onclick="sendAI()">↑</button>
+      </div>
+      <div class="note" data-i="aifoot">Report context is sent to your local model. Nothing leaves your network.</div>
+    </div>
+  </aside>
+
+<script>
+/* ── i18n ─────────────────────────────────────────────── */
+const I={
+  en:{askai:'Ask Neotec AI',report:'Report',fromd:'From date',tod:'To date',
+    aiph:'Ask about this report…',aifoot:'Report context is sent to your local model. Nothing leaves your network.',
+    ai_on:'powered by NeoNexus · local',ai_off:'NeoNexus not configured — set it in Insight Settings',
+    fb_title:'Reports load from Neotec Insight',
+    fb_msg:'The report views, authoring (Rows · Account map · Budget · Equity) and live data come from the main Neotec Insight app. Open it directly if the embed is blocked.',
+    fb_open:'Open Neotec Insight ↗',
+    greet:'Pick a report and date range above, then ask me anything — I read the live numbers from that report.',
+    s_sum:'Summarise this report',s_var:'Where are we vs budget?',s_risk:'Any risks or anomalies?',s_board:'What do I tell the board?'},
+  ar:{askai:'اسأل نيوتك AI',report:'التقرير',fromd:'من تاريخ',tod:'إلى تاريخ',
+    aiph:'اسأل عن هذا التقرير…',aifoot:'يُرسل سياق التقرير إلى نموذجك المحلي. لا شيء يغادر شبكتك.',
+    ai_on:'مدعوم بـ NeoNexus · محلي',ai_off:'NeoNexus غير مهيأ — فعّله من إعدادات إنسايت',
+    fb_title:'التقارير تُحمّل من نيوتك إنسايت',
+    fb_msg:'عروض التقارير والتأليف (الصفوف · ربط الحسابات · الموازنة · حقوق الملكية) والبيانات الحيّة تأتي من تطبيق نيوتك إنسايت الرئيسي. افتحه مباشرة إذا تعذّر التضمين.',
+    fb_open:'افتح نيوتك إنسايت ↗',
+    greet:'اختر تقريرًا ونطاق تاريخ بالأعلى، ثم اسألني أي شيء — أقرأ الأرقام الحيّة من ذلك التقرير.',
+    s_sum:'لخّص هذا التقرير',s_var:'أين نحن مقابل الموازنة؟',s_risk:'أي مخاطر أو حالات شاذة؟',s_board:'ماذا أقول لمجلس الإدارة؟'},
+};
+let lang='en';
+const FRAPPE=(()=>{try{return window.parent&&window.parent.frappe?window.parent.frappe:(window.frappe||null);}catch(e){return null;}})();
+let reports=[], aiReady=false;
+
+function applyI(){
+  document.querySelectorAll('[data-i]').forEach(el=>{const k=el.getAttribute('data-i');if(I[lang][k])el.textContent=I[lang][k];});
+  document.querySelectorAll('[data-i-ph]').forEach(el=>{const k=el.getAttribute('data-i-ph');if(I[lang][k])el.placeholder=I[lang][k];});
+  document.getElementById('aiSub').textContent=aiReady?I[lang].ai_on:I[lang].ai_off;
+}
+function toggleLang(){lang=lang==='en'?'ar':'en';document.body.classList.toggle('rtl',lang==='ar');
+  document.getElementById('langBtn').textContent=lang==='en'?'العربية':'English';applyI();
+  if(document.getElementById('aiPanel').classList.contains('open'))greet();}
+
+/* ── embed the real report SPA ────────────────────────── */
+function mountFrame(){
+  const f=document.getElementById('frame');
+  // same-origin /insight from the main app; falls back to a notice if blocked
+  try{f.src='/insight';}catch(e){}
+  f.addEventListener('load',()=>{try{ if(!f.contentWindow||!f.contentWindow.document.getElementById('root')) showFallback(); }catch(e){/* cross-origin or ok */}});
+  // if it never loads (no main app), reveal fallback after a beat
+  setTimeout(()=>{try{const d=f.contentDocument;if(d&&/not found|error 404/i.test(d.title||'')) showFallback();}catch(e){}},2500);
+}
+function showFallback(){document.getElementById('fallback').style.display='flex';}
+
+/* ── bootstrap: report list + AI status from this app's API (reads the
+ *    main app's Insight Report Definition + Insight Settings) ─────────── */
+function bootstrap(){
+  const y=new Date().getFullYear();
+  document.getElementById('aiFrom').value=y+'-01-01';
+  document.getElementById('aiTo').value=y+'-12-31';
+  if(!FRAPPE){applyI();return;}
+  FRAPPE.call({method:'neotec_insight_ai.api.get_bootstrap',callback:r=>{
+    const m=r&&r.message?r.message:{};
+    reports=m.reports||[];
+    aiReady=!!(m.ai&&m.ai.enabled&&m.ai.endpoint_set);
+    document.getElementById('aiDot').classList.toggle('off',!aiReady);
+    if(m.default_language==='ar'&&lang!=='ar')toggleLang();
+    const sel=document.getElementById('aiReport');
+    sel.innerHTML=reports.map(rp=>`<option value="${rp.slug||rp.name}">${rp.report_name||rp.slug}</option>`).join('')
+      ||`<option value="">—</option>`;
+    applyI();
+  }});
+}
+
+/* ── AI panel ─────────────────────────────────────────── */
+function openAI(){document.getElementById('aiPanel').classList.add('open');document.getElementById('aiScrim').classList.add('open');
+  if(!document.getElementById('aiBody').dataset.greeted)greet();document.getElementById('aiInput').focus();}
+function closeAI(){document.getElementById('aiPanel').classList.remove('open');document.getElementById('aiScrim').classList.remove('open');}
+function grow(t){t.style.height='auto';t.style.height=Math.min(t.scrollHeight,96)+'px';}
+function greet(){const b=document.getElementById('aiBody');b.dataset.greeted='1';
+  b.innerHTML=`<div class="msg ai">${I[lang].greet}</div>
+    <div class="chips">
+      <button class="chip" onclick="ask(I[lang].s_sum)">${I[lang].s_sum}</button>
+      <button class="chip" onclick="ask(I[lang].s_var)">${I[lang].s_var}</button>
+      <button class="chip" onclick="ask(I[lang].s_risk)">${I[lang].s_risk}</button>
+      <button class="chip" onclick="ask(I[lang].s_board)">${I[lang].s_board}</button>
+    </div>`;}
+function push(html,who){const b=document.getElementById('aiBody');const d=document.createElement('div');d.className='msg '+who;d.innerHTML=html;b.appendChild(d);b.scrollTop=b.scrollHeight;return d;}
+function mdLite(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');}
+function sendAI(){const t=document.getElementById('aiInput');const q=t.value.trim();if(!q)return;t.value='';grow(t);ask(q);}
+function ask(q){
+  document.querySelectorAll('.chips').forEach(c=>c.remove());
+  push(mdLite(q),'me');
+  const wait=push('<span class="typing"><i></i><i></i><i></i></span>','ai');
+  if(!FRAPPE){wait.innerHTML=I[lang].ai_off;return;}
+  FRAPPE.call({method:'neotec_insight_ai.api.ask_ai',
+    args:{report:document.getElementById('aiReport').value,question:q,lang:lang,
+      from_date:document.getElementById('aiFrom').value,to_date:document.getElementById('aiTo').value},
+    callback:r=>{const txt=r&&r.message&&r.message.text?r.message.text:I[lang].ai_off;wait.innerHTML=mdLite(txt);},
+    error:e=>{wait.innerHTML=(e&&e.message)?mdLite(e.message):I[lang].ai_off;}});
+}
+
+/* ── boot ─────────────────────────────────────────────── */
+mountFrame();
+bootstrap();
+applyI();
+</script>
+</body>
+</html>

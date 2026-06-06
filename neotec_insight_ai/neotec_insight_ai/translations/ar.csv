@@ -1,0 +1,42 @@
+Neotec Insight AI,نيوتك إنسايت AI
+Insight Settings,إعدادات إنسايت
+Neotec AI Report,تقرير نيوتك الذكي
+Neotec AI Report Dimension,بُعد تقرير نيوتك الذكي
+Report Name,اسم التقرير
+Report Name (Arabic),اسم التقرير (بالعربية)
+Slug,المُعرّف
+Report Type,نوع التقرير
+Active,نشط
+Available Views (View By),طرق العرض المتاحة (العرض حسب)
+Period,الفترة
+Dimension,البُعد
+Years,السنوات
+Combo,مركّب
+Exposed Dimensions (provision),الأبعاد المتاحة (التهيئة)
+Dimensions,الأبعاد
+Dimension Key,مفتاح البُعد
+Label,التسمية
+Label (Arabic),التسمية (بالعربية)
+Enabled,مُفعّل
+AI Engine (NeoNexus / OpenAI-compatible),محرك الذكاء الاصطناعي (NeoNexus / متوافق مع OpenAI)
+Enable AI assistant,تفعيل المساعد الذكي
+AI Endpoint,عنوان خدمة الذكاء الاصطناعي
+AI Model,نموذج الذكاء الاصطناعي
+API Key (optional),مفتاح الواجهة البرمجية (اختياري)
+System Prompt,موجّه النظام
+Localization,التعريب
+Default Language,اللغة الافتراضية
+Cost Center,مركز التكلفة
+Project,المشروع
+Department,القسم
+Branch,الفرع
+Business Unit,وحدة الأعمال
+Product Line,خط المنتج
+Consolidated P&L,الأرباح والخسائر الموحّدة
+Balance Sheet,الميزانية العمومية
+Trial Balance,ميزان المراجعة
+Cash Flow Statement,قائمة التدفقات النقدية
+Reporting,التقارير
+Configuration,الإعداد
+Insight Cockpit,لوحة إنسايت
+Report Definitions,تعريفات التقارير
